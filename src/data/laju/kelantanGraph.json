@@ -1,0 +1,4922 @@
+{
+  "metadata": {
+    "name": "Kelantan Transit Graph Skeleton",
+    "nodeCount": 195,
+    "edgeCount": 394
+  },
+  "nodes": [
+    {
+      "id": "kb_center",
+      "name": "Kota Bharu City Center",
+      "lat": 6.13,
+      "lng": 102.239,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_sy_bridge",
+      "name": "Jambatan Sultan Yahya Petra",
+      "lat": 6.126,
+      "lng": 102.231,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_kubang_kerian",
+      "name": "Kubang Kerian Hub",
+      "lat": 6.085,
+      "lng": 102.27,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_pengkalan_chepa",
+      "name": "Pengkalan Chepa Junction",
+      "lat": 6.162,
+      "lng": 102.284,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_airport",
+      "name": "LTSIP Airport Junction",
+      "lat": 6.168,
+      "lng": 102.292,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_wakaf_che_yeh",
+      "name": "Wakaf Che Yeh Junction",
+      "lat": 6.088,
+      "lng": 102.237,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_salor",
+      "name": "Salor Junction",
+      "lat": 6.072,
+      "lng": 102.215,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_ketereh",
+      "name": "Ketereh Town",
+      "lat": 5.962,
+      "lng": 102.248,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_kok_lanas",
+      "name": "Kok Lanas Junction",
+      "lat": 5.912,
+      "lng": 102.239,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "kb_melor",
+      "name": "Melor Town",
+      "lat": 5.965,
+      "lng": 102.298,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "tp_wakaf_bharu",
+      "name": "Wakaf Bharu Junction",
+      "lat": 6.115,
+      "lng": 102.204,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "tp_chabang_empat",
+      "name": "Chabang Empat Junction",
+      "lat": 6.159,
+      "lng": 102.176,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "tp_tumpat_town",
+      "name": "Tumpat Town Hub",
+      "lat": 6.198,
+      "lng": 102.168,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "tp_pengkalan_kubor",
+      "name": "Pengkalan Kubor Border",
+      "lat": 6.23,
+      "lng": 102.148,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "pm_tendong",
+      "name": "Tendong Junction",
+      "lat": 6.081,
+      "lng": 102.196,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "pm_pasir_mas_town",
+      "name": "Pasir Mas Town Center",
+      "lat": 6.042,
+      "lng": 102.141,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "pm_lati",
+      "name": "Lati Junction",
+      "lat": 6.032,
+      "lng": 102.161,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "pm_rantau_panjang",
+      "name": "Rantau Panjang Town",
+      "lat": 6.022,
+      "lng": 101.974,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "bc_jelawat",
+      "name": "Jelawat Town",
+      "lat": 6.008,
+      "lng": 102.37,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "bc_bachok_town",
+      "name": "Bachok Town Center",
+      "lat": 6.064,
+      "lng": 102.399,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "bc_umk_bachok",
+      "name": "UMK Bachok Main Gate",
+      "lat": 6.009,
+      "lng": 102.404,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "pp_pasir_puteh_town",
+      "name": "Pasir Puteh Town Hub",
+      "lat": 5.834,
+      "lng": 102.404,
+      "jajahan": "Pasir Puteh"
+    },
+    {
+      "id": "pp_tok_bali",
+      "name": "Tok Bali Port Junction",
+      "lat": 5.892,
+      "lng": 102.485,
+      "jajahan": "Pasir Puteh"
+    },
+    {
+      "id": "mc_machang_town",
+      "name": "Machang Town Center",
+      "lat": 5.765,
+      "lng": 102.215,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "mc_uitm",
+      "name": "UiTM Machang Gate",
+      "lat": 5.759,
+      "lng": 102.218,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "tm_tanah_merah_town",
+      "name": "Tanah Merah Town Hub",
+      "lat": 5.808,
+      "lng": 102.148,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "tm_batugajah",
+      "name": "Batu Gajah Junction",
+      "lat": 5.741,
+      "lng": 101.982,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "jl_jeli_town",
+      "name": "Jeli Town Center",
+      "lat": 5.694,
+      "lng": 101.843,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "jl_umk_jeli",
+      "name": "UMK Jeli Gate",
+      "lat": 5.696,
+      "lng": 101.871,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "kk_kuala_krai_town",
+      "name": "Kuala Krai Town Center",
+      "lat": 5.532,
+      "lng": 102.203,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "kk_dabong",
+      "name": "Dabong Junction",
+      "lat": 5.379,
+      "lng": 101.994,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "gm_chiku",
+      "name": "Chiku FELDA Hub",
+      "lat": 5.105,
+      "lng": 102.115,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "gm_gua_musang_town",
+      "name": "Gua Musang Town Hub",
+      "lat": 4.882,
+      "lng": 101.968,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "lj_pos_brooke",
+      "name": "Pos Brooke Lojing",
+      "lat": 4.685,
+      "lng": 101.448,
+      "jajahan": "Lojing"
+    },
+    {
+      "id": "lj_lojing_center",
+      "name": "Lojing Highlands Center",
+      "lat": 4.655,
+      "lng": 101.402,
+      "jajahan": "Lojing"
+    },
+    {
+      "id": "node_1",
+      "name": "Kota-Jambatan Waypoint 1",
+      "lat": 6.12867,
+      "lng": 102.23633,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_2",
+      "name": "Kota-Jambatan Waypoint 2",
+      "lat": 6.12733,
+      "lng": 102.23367,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_3",
+      "name": "Kota-Kubang Waypoint 1",
+      "lat": 6.115,
+      "lng": 102.24933,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_4",
+      "name": "Kota-Kubang Waypoint 2",
+      "lat": 6.1,
+      "lng": 102.25967,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_5",
+      "name": "Kota-Pengkalan Waypoint 1",
+      "lat": 6.14067,
+      "lng": 102.254,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_6",
+      "name": "Kota-Pengkalan Waypoint 2",
+      "lat": 6.15133,
+      "lng": 102.269,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_7",
+      "name": "Kota-Wakaf Waypoint 1",
+      "lat": 6.116,
+      "lng": 102.23833,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_8",
+      "name": "Kota-Wakaf Waypoint 2",
+      "lat": 6.102,
+      "lng": 102.23767,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_9",
+      "name": "Pengkalan-LTSIP Waypoint 1",
+      "lat": 6.164,
+      "lng": 102.28667,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_10",
+      "name": "Pengkalan-LTSIP Waypoint 2",
+      "lat": 6.166,
+      "lng": 102.28933,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_11",
+      "name": "Wakaf-Salor Waypoint 1",
+      "lat": 6.08267,
+      "lng": 102.22967,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_12",
+      "name": "Wakaf-Salor Waypoint 2",
+      "lat": 6.07733,
+      "lng": 102.22233,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_13",
+      "name": "Jambatan-Wakaf Waypoint 1",
+      "lat": 6.12233,
+      "lng": 102.222,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_14",
+      "name": "Jambatan-Wakaf Waypoint 2",
+      "lat": 6.11867,
+      "lng": 102.213,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_15",
+      "name": "Wakaf-Chabang Waypoint 1",
+      "lat": 6.12967,
+      "lng": 102.19467,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "node_16",
+      "name": "Wakaf-Chabang Waypoint 2",
+      "lat": 6.14433,
+      "lng": 102.18533,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "node_17",
+      "name": "Chabang-Tumpat Waypoint 1",
+      "lat": 6.172,
+      "lng": 102.17333,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "node_18",
+      "name": "Chabang-Tumpat Waypoint 2",
+      "lat": 6.185,
+      "lng": 102.17067,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "node_19",
+      "name": "Tumpat-Pengkalan Waypoint 1",
+      "lat": 6.20867,
+      "lng": 102.16133,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "node_20",
+      "name": "Tumpat-Pengkalan Waypoint 2",
+      "lat": 6.21933,
+      "lng": 102.15467,
+      "jajahan": "Tumpat"
+    },
+    {
+      "id": "node_21",
+      "name": "Salor-Tendong Waypoint 1",
+      "lat": 6.075,
+      "lng": 102.20867,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_22",
+      "name": "Salor-Tendong Waypoint 2",
+      "lat": 6.078,
+      "lng": 102.20233,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_23",
+      "name": "Tendong-Pasir Waypoint 1",
+      "lat": 6.068,
+      "lng": 102.17767,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_24",
+      "name": "Tendong-Pasir Waypoint 2",
+      "lat": 6.055,
+      "lng": 102.15933,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_25",
+      "name": "Pasir-Lati Waypoint 1",
+      "lat": 6.03867,
+      "lng": 102.14767,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_26",
+      "name": "Pasir-Lati Waypoint 2",
+      "lat": 6.03533,
+      "lng": 102.15433,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_27",
+      "name": "Pasir-Rantau Waypoint 1",
+      "lat": 6.03914,
+      "lng": 102.11714,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_28",
+      "name": "Pasir-Rantau Waypoint 2",
+      "lat": 6.03629,
+      "lng": 102.09329,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_29",
+      "name": "Pasir-Rantau Waypoint 3",
+      "lat": 6.03343,
+      "lng": 102.06943,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_30",
+      "name": "Pasir-Rantau Waypoint 4",
+      "lat": 6.03057,
+      "lng": 102.04557,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_31",
+      "name": "Pasir-Rantau Waypoint 5",
+      "lat": 6.02771,
+      "lng": 102.02171,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_32",
+      "name": "Pasir-Rantau Waypoint 6",
+      "lat": 6.02486,
+      "lng": 101.99786,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_33",
+      "name": "Kubang-Jelawat Waypoint 1",
+      "lat": 6.0696,
+      "lng": 102.29,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_34",
+      "name": "Kubang-Jelawat Waypoint 2",
+      "lat": 6.0542,
+      "lng": 102.31,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_35",
+      "name": "Kubang-Jelawat Waypoint 3",
+      "lat": 6.0388,
+      "lng": 102.33,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_36",
+      "name": "Kubang-Jelawat Waypoint 4",
+      "lat": 6.0234,
+      "lng": 102.35,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_37",
+      "name": "Jelawat-Bachok Waypoint 1",
+      "lat": 6.02667,
+      "lng": 102.37967,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_38",
+      "name": "Jelawat-Bachok Waypoint 2",
+      "lat": 6.04533,
+      "lng": 102.38933,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_39",
+      "name": "Jelawat-UMK Waypoint 1",
+      "lat": 6.00833,
+      "lng": 102.38133,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_40",
+      "name": "Jelawat-UMK Waypoint 2",
+      "lat": 6.00867,
+      "lng": 102.39267,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_41",
+      "name": "Wakaf-Melor Waypoint 1",
+      "lat": 6.0675,
+      "lng": 102.24717,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_42",
+      "name": "Wakaf-Melor Waypoint 2",
+      "lat": 6.047,
+      "lng": 102.25733,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_43",
+      "name": "Wakaf-Melor Waypoint 3",
+      "lat": 6.0265,
+      "lng": 102.2675,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_44",
+      "name": "Wakaf-Melor Waypoint 4",
+      "lat": 6.006,
+      "lng": 102.27767,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_45",
+      "name": "Wakaf-Melor Waypoint 5",
+      "lat": 5.9855,
+      "lng": 102.28783,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_46",
+      "name": "Melor-Pasir Waypoint 1",
+      "lat": 5.94629,
+      "lng": 102.31314,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_47",
+      "name": "Melor-Pasir Waypoint 2",
+      "lat": 5.92757,
+      "lng": 102.32829,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_48",
+      "name": "Melor-Pasir Waypoint 3",
+      "lat": 5.90886,
+      "lng": 102.34343,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_49",
+      "name": "Melor-Pasir Waypoint 4",
+      "lat": 5.89014,
+      "lng": 102.35857,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_50",
+      "name": "Melor-Pasir Waypoint 5",
+      "lat": 5.87143,
+      "lng": 102.37371,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_51",
+      "name": "Melor-Pasir Waypoint 6",
+      "lat": 5.85271,
+      "lng": 102.38886,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_52",
+      "name": "Pasir-Tok Waypoint 1",
+      "lat": 5.8485,
+      "lng": 102.42425,
+      "jajahan": "Pasir Puteh"
+    },
+    {
+      "id": "node_53",
+      "name": "Pasir-Tok Waypoint 2",
+      "lat": 5.863,
+      "lng": 102.4445,
+      "jajahan": "Pasir Puteh"
+    },
+    {
+      "id": "node_54",
+      "name": "Pasir-Tok Waypoint 3",
+      "lat": 5.8775,
+      "lng": 102.46475,
+      "jajahan": "Pasir Puteh"
+    },
+    {
+      "id": "node_55",
+      "name": "UMK-Tok Waypoint 1",
+      "lat": 5.9895,
+      "lng": 102.4175,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_56",
+      "name": "UMK-Tok Waypoint 2",
+      "lat": 5.97,
+      "lng": 102.431,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_57",
+      "name": "UMK-Tok Waypoint 3",
+      "lat": 5.9505,
+      "lng": 102.4445,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_58",
+      "name": "UMK-Tok Waypoint 4",
+      "lat": 5.931,
+      "lng": 102.458,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_59",
+      "name": "UMK-Tok Waypoint 5",
+      "lat": 5.9115,
+      "lng": 102.4715,
+      "jajahan": "Bachok"
+    },
+    {
+      "id": "node_60",
+      "name": "Wakaf-Ketereh Waypoint 1",
+      "lat": 6.0628,
+      "lng": 102.2392,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_61",
+      "name": "Wakaf-Ketereh Waypoint 2",
+      "lat": 6.0376,
+      "lng": 102.2414,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_62",
+      "name": "Wakaf-Ketereh Waypoint 3",
+      "lat": 6.0124,
+      "lng": 102.2436,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_63",
+      "name": "Wakaf-Ketereh Waypoint 4",
+      "lat": 5.9872,
+      "lng": 102.2458,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_64",
+      "name": "Ketereh-Kok Waypoint 1",
+      "lat": 5.94533,
+      "lng": 102.245,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_65",
+      "name": "Ketereh-Kok Waypoint 2",
+      "lat": 5.92867,
+      "lng": 102.242,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_66",
+      "name": "Kok-Machang Waypoint 1",
+      "lat": 5.8875,
+      "lng": 102.235,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_67",
+      "name": "Kok-Machang Waypoint 2",
+      "lat": 5.863,
+      "lng": 102.231,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_68",
+      "name": "Kok-Machang Waypoint 3",
+      "lat": 5.8385,
+      "lng": 102.227,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_69",
+      "name": "Kok-Machang Waypoint 4",
+      "lat": 5.814,
+      "lng": 102.223,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_70",
+      "name": "Kok-Machang Waypoint 5",
+      "lat": 5.7895,
+      "lng": 102.219,
+      "jajahan": "Kota Bharu"
+    },
+    {
+      "id": "node_71",
+      "name": "Machang-UiTM Waypoint 1",
+      "lat": 5.763,
+      "lng": 102.216,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_72",
+      "name": "Machang-UiTM Waypoint 2",
+      "lat": 5.761,
+      "lng": 102.217,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_73",
+      "name": "Machang-Tanah Waypoint 1",
+      "lat": 5.77933,
+      "lng": 102.19267,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_74",
+      "name": "Machang-Tanah Waypoint 2",
+      "lat": 5.79367,
+      "lng": 102.17033,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_75",
+      "name": "Pasir-Tanah Waypoint 1",
+      "lat": 6.0186,
+      "lng": 102.1417,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_76",
+      "name": "Pasir-Tanah Waypoint 2",
+      "lat": 5.9952,
+      "lng": 102.1424,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_77",
+      "name": "Pasir-Tanah Waypoint 3",
+      "lat": 5.9718,
+      "lng": 102.1431,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_78",
+      "name": "Pasir-Tanah Waypoint 4",
+      "lat": 5.9484,
+      "lng": 102.1438,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_79",
+      "name": "Pasir-Tanah Waypoint 5",
+      "lat": 5.925,
+      "lng": 102.1445,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_80",
+      "name": "Pasir-Tanah Waypoint 6",
+      "lat": 5.9016,
+      "lng": 102.1452,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_81",
+      "name": "Pasir-Tanah Waypoint 7",
+      "lat": 5.8782,
+      "lng": 102.1459,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_82",
+      "name": "Pasir-Tanah Waypoint 8",
+      "lat": 5.8548,
+      "lng": 102.1466,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_83",
+      "name": "Pasir-Tanah Waypoint 9",
+      "lat": 5.8314,
+      "lng": 102.1473,
+      "jajahan": "Pasir Mas"
+    },
+    {
+      "id": "node_84",
+      "name": "Tanah-Batu Waypoint 1",
+      "lat": 5.79843,
+      "lng": 102.12429,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_85",
+      "name": "Tanah-Batu Waypoint 2",
+      "lat": 5.78886,
+      "lng": 102.10057,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_86",
+      "name": "Tanah-Batu Waypoint 3",
+      "lat": 5.77929,
+      "lng": 102.07686,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_87",
+      "name": "Tanah-Batu Waypoint 4",
+      "lat": 5.76971,
+      "lng": 102.05314,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_88",
+      "name": "Tanah-Batu Waypoint 5",
+      "lat": 5.76014,
+      "lng": 102.02943,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_89",
+      "name": "Tanah-Batu Waypoint 6",
+      "lat": 5.75057,
+      "lng": 102.00571,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_90",
+      "name": "Batu-Jeli Waypoint 1",
+      "lat": 5.73317,
+      "lng": 101.95883,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_91",
+      "name": "Batu-Jeli Waypoint 2",
+      "lat": 5.72533,
+      "lng": 101.93567,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_92",
+      "name": "Batu-Jeli Waypoint 3",
+      "lat": 5.7175,
+      "lng": 101.9125,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_93",
+      "name": "Batu-Jeli Waypoint 4",
+      "lat": 5.70967,
+      "lng": 101.88933,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_94",
+      "name": "Batu-Jeli Waypoint 5",
+      "lat": 5.70183,
+      "lng": 101.86617,
+      "jajahan": "Tanah Merah"
+    },
+    {
+      "id": "node_95",
+      "name": "Jeli-UMK Waypoint 1",
+      "lat": 5.69467,
+      "lng": 101.85233,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_96",
+      "name": "Jeli-UMK Waypoint 2",
+      "lat": 5.69533,
+      "lng": 101.86167,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_97",
+      "name": "Machang-Kuala Waypoint 1",
+      "lat": 5.7417,
+      "lng": 102.2138,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_98",
+      "name": "Machang-Kuala Waypoint 2",
+      "lat": 5.7184,
+      "lng": 102.2126,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_99",
+      "name": "Machang-Kuala Waypoint 3",
+      "lat": 5.6951,
+      "lng": 102.2114,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_100",
+      "name": "Machang-Kuala Waypoint 4",
+      "lat": 5.6718,
+      "lng": 102.2102,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_101",
+      "name": "Machang-Kuala Waypoint 5",
+      "lat": 5.6485,
+      "lng": 102.209,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_102",
+      "name": "Machang-Kuala Waypoint 6",
+      "lat": 5.6252,
+      "lng": 102.2078,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_103",
+      "name": "Machang-Kuala Waypoint 7",
+      "lat": 5.6019,
+      "lng": 102.2066,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_104",
+      "name": "Machang-Kuala Waypoint 8",
+      "lat": 5.5786,
+      "lng": 102.2054,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_105",
+      "name": "Machang-Kuala Waypoint 9",
+      "lat": 5.5553,
+      "lng": 102.2042,
+      "jajahan": "Machang"
+    },
+    {
+      "id": "node_106",
+      "name": "Kuala-Dabong Waypoint 1",
+      "lat": 5.51809,
+      "lng": 102.184,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_107",
+      "name": "Kuala-Dabong Waypoint 2",
+      "lat": 5.50418,
+      "lng": 102.165,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_108",
+      "name": "Kuala-Dabong Waypoint 3",
+      "lat": 5.49027,
+      "lng": 102.146,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_109",
+      "name": "Kuala-Dabong Waypoint 4",
+      "lat": 5.47636,
+      "lng": 102.127,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_110",
+      "name": "Kuala-Dabong Waypoint 5",
+      "lat": 5.46245,
+      "lng": 102.108,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_111",
+      "name": "Kuala-Dabong Waypoint 6",
+      "lat": 5.44855,
+      "lng": 102.089,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_112",
+      "name": "Kuala-Dabong Waypoint 7",
+      "lat": 5.43464,
+      "lng": 102.07,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_113",
+      "name": "Kuala-Dabong Waypoint 8",
+      "lat": 5.42073,
+      "lng": 102.051,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_114",
+      "name": "Kuala-Dabong Waypoint 9",
+      "lat": 5.40682,
+      "lng": 102.032,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_115",
+      "name": "Kuala-Dabong Waypoint 10",
+      "lat": 5.39291,
+      "lng": 102.013,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_116",
+      "name": "Kuala-Chiku Waypoint 1",
+      "lat": 5.49642,
+      "lng": 102.19567,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_117",
+      "name": "Kuala-Chiku Waypoint 2",
+      "lat": 5.46083,
+      "lng": 102.18833,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_118",
+      "name": "Kuala-Chiku Waypoint 3",
+      "lat": 5.42525,
+      "lng": 102.181,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_119",
+      "name": "Kuala-Chiku Waypoint 4",
+      "lat": 5.38967,
+      "lng": 102.17367,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_120",
+      "name": "Kuala-Chiku Waypoint 5",
+      "lat": 5.35408,
+      "lng": 102.16633,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_121",
+      "name": "Kuala-Chiku Waypoint 6",
+      "lat": 5.3185,
+      "lng": 102.159,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_122",
+      "name": "Kuala-Chiku Waypoint 7",
+      "lat": 5.28292,
+      "lng": 102.15167,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_123",
+      "name": "Kuala-Chiku Waypoint 8",
+      "lat": 5.24733,
+      "lng": 102.14433,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_124",
+      "name": "Kuala-Chiku Waypoint 9",
+      "lat": 5.21175,
+      "lng": 102.137,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_125",
+      "name": "Kuala-Chiku Waypoint 10",
+      "lat": 5.17617,
+      "lng": 102.12967,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_126",
+      "name": "Kuala-Chiku Waypoint 11",
+      "lat": 5.14058,
+      "lng": 102.12233,
+      "jajahan": "Kuala Krai"
+    },
+    {
+      "id": "node_127",
+      "name": "Chiku-Gua Waypoint 1",
+      "lat": 5.08473,
+      "lng": 102.10164,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_128",
+      "name": "Chiku-Gua Waypoint 2",
+      "lat": 5.06445,
+      "lng": 102.08827,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_129",
+      "name": "Chiku-Gua Waypoint 3",
+      "lat": 5.04418,
+      "lng": 102.07491,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_130",
+      "name": "Chiku-Gua Waypoint 4",
+      "lat": 5.02391,
+      "lng": 102.06155,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_131",
+      "name": "Chiku-Gua Waypoint 5",
+      "lat": 5.00364,
+      "lng": 102.04818,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_132",
+      "name": "Chiku-Gua Waypoint 6",
+      "lat": 4.98336,
+      "lng": 102.03482,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_133",
+      "name": "Chiku-Gua Waypoint 7",
+      "lat": 4.96309,
+      "lng": 102.02145,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_134",
+      "name": "Chiku-Gua Waypoint 8",
+      "lat": 4.94282,
+      "lng": 102.00809,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_135",
+      "name": "Chiku-Gua Waypoint 9",
+      "lat": 4.92255,
+      "lng": 101.99473,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_136",
+      "name": "Chiku-Gua Waypoint 10",
+      "lat": 4.90227,
+      "lng": 101.98136,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_137",
+      "name": "Gua-Pos Waypoint 1",
+      "lat": 4.86558,
+      "lng": 101.92467,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_138",
+      "name": "Gua-Pos Waypoint 2",
+      "lat": 4.84917,
+      "lng": 101.88133,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_139",
+      "name": "Gua-Pos Waypoint 3",
+      "lat": 4.83275,
+      "lng": 101.838,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_140",
+      "name": "Gua-Pos Waypoint 4",
+      "lat": 4.81633,
+      "lng": 101.79467,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_141",
+      "name": "Gua-Pos Waypoint 5",
+      "lat": 4.79992,
+      "lng": 101.75133,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_142",
+      "name": "Gua-Pos Waypoint 6",
+      "lat": 4.7835,
+      "lng": 101.708,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_143",
+      "name": "Gua-Pos Waypoint 7",
+      "lat": 4.76708,
+      "lng": 101.66467,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_144",
+      "name": "Gua-Pos Waypoint 8",
+      "lat": 4.75067,
+      "lng": 101.62133,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_145",
+      "name": "Gua-Pos Waypoint 9",
+      "lat": 4.73425,
+      "lng": 101.578,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_146",
+      "name": "Gua-Pos Waypoint 10",
+      "lat": 4.71783,
+      "lng": 101.53467,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_147",
+      "name": "Gua-Pos Waypoint 11",
+      "lat": 4.70142,
+      "lng": 101.49133,
+      "jajahan": "Gua Musang"
+    },
+    {
+      "id": "node_148",
+      "name": "Pos-Lojing Waypoint 1",
+      "lat": 4.675,
+      "lng": 101.43267,
+      "jajahan": "Lojing"
+    },
+    {
+      "id": "node_149",
+      "name": "Pos-Lojing Waypoint 2",
+      "lat": 4.665,
+      "lng": 101.41733,
+      "jajahan": "Lojing"
+    },
+    {
+      "id": "node_150",
+      "name": "Jeli-Dabong Waypoint 1",
+      "lat": 5.66775,
+      "lng": 101.85558,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_151",
+      "name": "Jeli-Dabong Waypoint 2",
+      "lat": 5.6415,
+      "lng": 101.86817,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_152",
+      "name": "Jeli-Dabong Waypoint 3",
+      "lat": 5.61525,
+      "lng": 101.88075,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_153",
+      "name": "Jeli-Dabong Waypoint 4",
+      "lat": 5.589,
+      "lng": 101.89333,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_154",
+      "name": "Jeli-Dabong Waypoint 5",
+      "lat": 5.56275,
+      "lng": 101.90592,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_155",
+      "name": "Jeli-Dabong Waypoint 6",
+      "lat": 5.5365,
+      "lng": 101.9185,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_156",
+      "name": "Jeli-Dabong Waypoint 7",
+      "lat": 5.51025,
+      "lng": 101.93108,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_157",
+      "name": "Jeli-Dabong Waypoint 8",
+      "lat": 5.484,
+      "lng": 101.94367,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_158",
+      "name": "Jeli-Dabong Waypoint 9",
+      "lat": 5.45775,
+      "lng": 101.95625,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_159",
+      "name": "Jeli-Dabong Waypoint 10",
+      "lat": 5.4315,
+      "lng": 101.96883,
+      "jajahan": "Jeli"
+    },
+    {
+      "id": "node_160",
+      "name": "Jeli-Dabong Waypoint 11",
+      "lat": 5.40525,
+      "lng": 101.98142,
+      "jajahan": "Jeli"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_1",
+      "from": "kb_center",
+      "to": "node_1",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_2",
+      "from": "node_1",
+      "to": "kb_center",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_3",
+      "from": "node_1",
+      "to": "node_2",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_4",
+      "from": "node_2",
+      "to": "node_1",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_5",
+      "from": "node_2",
+      "to": "kb_sy_bridge",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_6",
+      "from": "kb_sy_bridge",
+      "to": "node_2",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_7",
+      "from": "kb_center",
+      "to": "node_3",
+      "lengthKm": 2.02,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_8",
+      "from": "node_3",
+      "to": "kb_center",
+      "lengthKm": 2.02,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_9",
+      "from": "node_3",
+      "to": "node_4",
+      "lengthKm": 2.02,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_10",
+      "from": "node_4",
+      "to": "node_3",
+      "lengthKm": 2.02,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_11",
+      "from": "node_4",
+      "to": "kb_kubang_kerian",
+      "lengthKm": 2.02,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_12",
+      "from": "kb_kubang_kerian",
+      "to": "node_4",
+      "lengthKm": 2.02,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_13",
+      "from": "kb_center",
+      "to": "node_5",
+      "lengthKm": 2.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_14",
+      "from": "node_5",
+      "to": "kb_center",
+      "lengthKm": 2.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_15",
+      "from": "node_5",
+      "to": "node_6",
+      "lengthKm": 2.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_16",
+      "from": "node_6",
+      "to": "node_5",
+      "lengthKm": 2.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_17",
+      "from": "node_6",
+      "to": "kb_pengkalan_chepa",
+      "lengthKm": 2.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_18",
+      "from": "kb_pengkalan_chepa",
+      "to": "node_6",
+      "lengthKm": 2.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_19",
+      "from": "kb_center",
+      "to": "node_7",
+      "lengthKm": 1.56,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_20",
+      "from": "node_7",
+      "to": "kb_center",
+      "lengthKm": 1.56,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_21",
+      "from": "node_7",
+      "to": "node_8",
+      "lengthKm": 1.56,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_22",
+      "from": "node_8",
+      "to": "node_7",
+      "lengthKm": 1.56,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_23",
+      "from": "node_8",
+      "to": "kb_wakaf_che_yeh",
+      "lengthKm": 1.56,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_24",
+      "from": "kb_wakaf_che_yeh",
+      "to": "node_8",
+      "lengthKm": 1.56,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_25",
+      "from": "kb_pengkalan_chepa",
+      "to": "node_9",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_26",
+      "from": "node_9",
+      "to": "kb_pengkalan_chepa",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_27",
+      "from": "node_9",
+      "to": "node_10",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_28",
+      "from": "node_10",
+      "to": "node_9",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_29",
+      "from": "node_10",
+      "to": "kb_airport",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_30",
+      "from": "kb_airport",
+      "to": "node_10",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_31",
+      "from": "kb_wakaf_che_yeh",
+      "to": "node_11",
+      "lengthKm": 1,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_32",
+      "from": "node_11",
+      "to": "kb_wakaf_che_yeh",
+      "lengthKm": 1,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_33",
+      "from": "node_11",
+      "to": "node_12",
+      "lengthKm": 1.01,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_34",
+      "from": "node_12",
+      "to": "node_11",
+      "lengthKm": 1.01,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_35",
+      "from": "node_12",
+      "to": "kb_salor",
+      "lengthKm": 1,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_36",
+      "from": "kb_salor",
+      "to": "node_12",
+      "lengthKm": 1,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_37",
+      "from": "kb_sy_bridge",
+      "to": "node_13",
+      "lengthKm": 1.08,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_38",
+      "from": "node_13",
+      "to": "kb_sy_bridge",
+      "lengthKm": 1.08,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_39",
+      "from": "node_13",
+      "to": "node_14",
+      "lengthKm": 1.08,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_40",
+      "from": "node_14",
+      "to": "node_13",
+      "lengthKm": 1.08,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_41",
+      "from": "node_14",
+      "to": "tp_wakaf_bharu",
+      "lengthKm": 1.08,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_42",
+      "from": "tp_wakaf_bharu",
+      "to": "node_14",
+      "lengthKm": 1.08,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_43",
+      "from": "tp_wakaf_bharu",
+      "to": "node_15",
+      "lengthKm": 1.93,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_44",
+      "from": "node_15",
+      "to": "tp_wakaf_bharu",
+      "lengthKm": 1.93,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_45",
+      "from": "node_15",
+      "to": "node_16",
+      "lengthKm": 1.93,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_46",
+      "from": "node_16",
+      "to": "node_15",
+      "lengthKm": 1.93,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_47",
+      "from": "node_16",
+      "to": "tp_chabang_empat",
+      "lengthKm": 1.93,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_48",
+      "from": "tp_chabang_empat",
+      "to": "node_16",
+      "lengthKm": 1.93,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_49",
+      "from": "tp_chabang_empat",
+      "to": "node_17",
+      "lengthKm": 1.48,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_50",
+      "from": "node_17",
+      "to": "tp_chabang_empat",
+      "lengthKm": 1.48,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_51",
+      "from": "node_17",
+      "to": "node_18",
+      "lengthKm": 1.48,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_52",
+      "from": "node_18",
+      "to": "node_17",
+      "lengthKm": 1.48,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_53",
+      "from": "node_18",
+      "to": "tp_tumpat_town",
+      "lengthKm": 1.48,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_54",
+      "from": "tp_tumpat_town",
+      "to": "node_18",
+      "lengthKm": 1.48,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_55",
+      "from": "tp_tumpat_town",
+      "to": "node_19",
+      "lengthKm": 1.4,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_56",
+      "from": "node_19",
+      "to": "tp_tumpat_town",
+      "lengthKm": 1.4,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_57",
+      "from": "node_19",
+      "to": "node_20",
+      "lengthKm": 1.4,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_58",
+      "from": "node_20",
+      "to": "node_19",
+      "lengthKm": 1.4,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_59",
+      "from": "node_20",
+      "to": "tp_pengkalan_kubor",
+      "lengthKm": 1.4,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_60",
+      "from": "tp_pengkalan_kubor",
+      "to": "node_20",
+      "lengthKm": 1.4,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_61",
+      "from": "kb_salor",
+      "to": "node_21",
+      "lengthKm": 0.78,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_62",
+      "from": "node_21",
+      "to": "kb_salor",
+      "lengthKm": 0.78,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_63",
+      "from": "node_21",
+      "to": "node_22",
+      "lengthKm": 0.78,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_64",
+      "from": "node_22",
+      "to": "node_21",
+      "lengthKm": 0.78,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_65",
+      "from": "node_22",
+      "to": "pm_tendong",
+      "lengthKm": 0.78,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_66",
+      "from": "pm_tendong",
+      "to": "node_22",
+      "lengthKm": 0.78,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_67",
+      "from": "pm_tendong",
+      "to": "node_23",
+      "lengthKm": 2.49,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_68",
+      "from": "node_23",
+      "to": "pm_tendong",
+      "lengthKm": 2.49,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_69",
+      "from": "node_23",
+      "to": "node_24",
+      "lengthKm": 2.49,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_70",
+      "from": "node_24",
+      "to": "node_23",
+      "lengthKm": 2.49,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_71",
+      "from": "node_24",
+      "to": "pm_pasir_mas_town",
+      "lengthKm": 2.49,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_72",
+      "from": "pm_pasir_mas_town",
+      "to": "node_24",
+      "lengthKm": 2.49,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_73",
+      "from": "pm_pasir_mas_town",
+      "to": "node_25",
+      "lengthKm": 0.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_74",
+      "from": "node_25",
+      "to": "pm_pasir_mas_town",
+      "lengthKm": 0.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_75",
+      "from": "node_25",
+      "to": "node_26",
+      "lengthKm": 0.82,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_76",
+      "from": "node_26",
+      "to": "node_25",
+      "lengthKm": 0.82,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_77",
+      "from": "node_26",
+      "to": "pm_lati",
+      "lengthKm": 0.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_78",
+      "from": "pm_lati",
+      "to": "node_26",
+      "lengthKm": 0.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_79",
+      "from": "pm_pasir_mas_town",
+      "to": "node_27",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_80",
+      "from": "node_27",
+      "to": "pm_pasir_mas_town",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_81",
+      "from": "node_27",
+      "to": "node_28",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_82",
+      "from": "node_28",
+      "to": "node_27",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_83",
+      "from": "node_28",
+      "to": "node_29",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_84",
+      "from": "node_29",
+      "to": "node_28",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_85",
+      "from": "node_29",
+      "to": "node_30",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_86",
+      "from": "node_30",
+      "to": "node_29",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_87",
+      "from": "node_30",
+      "to": "node_31",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_88",
+      "from": "node_31",
+      "to": "node_30",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_89",
+      "from": "node_31",
+      "to": "node_32",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_90",
+      "from": "node_32",
+      "to": "node_31",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_91",
+      "from": "node_32",
+      "to": "pm_rantau_panjang",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_92",
+      "from": "pm_rantau_panjang",
+      "to": "node_32",
+      "lengthKm": 2.66,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_93",
+      "from": "kb_kubang_kerian",
+      "to": "node_33",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_94",
+      "from": "node_33",
+      "to": "kb_kubang_kerian",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_95",
+      "from": "node_33",
+      "to": "node_34",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_96",
+      "from": "node_34",
+      "to": "node_33",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_97",
+      "from": "node_34",
+      "to": "node_35",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_98",
+      "from": "node_35",
+      "to": "node_34",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_99",
+      "from": "node_35",
+      "to": "node_36",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_100",
+      "from": "node_36",
+      "to": "node_35",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_101",
+      "from": "node_36",
+      "to": "bc_jelawat",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_102",
+      "from": "bc_jelawat",
+      "to": "node_36",
+      "lengthKm": 2.8,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_103",
+      "from": "bc_jelawat",
+      "to": "node_37",
+      "lengthKm": 2.34,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_104",
+      "from": "node_37",
+      "to": "bc_jelawat",
+      "lengthKm": 2.34,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_105",
+      "from": "node_37",
+      "to": "node_38",
+      "lengthKm": 2.33,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_106",
+      "from": "node_38",
+      "to": "node_37",
+      "lengthKm": 2.33,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_107",
+      "from": "node_38",
+      "to": "bc_bachok_town",
+      "lengthKm": 2.34,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_108",
+      "from": "bc_bachok_town",
+      "to": "node_38",
+      "lengthKm": 2.34,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_109",
+      "from": "bc_jelawat",
+      "to": "node_39",
+      "lengthKm": 1.25,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_110",
+      "from": "node_39",
+      "to": "bc_jelawat",
+      "lengthKm": 1.25,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_111",
+      "from": "node_39",
+      "to": "node_40",
+      "lengthKm": 1.25,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_112",
+      "from": "node_40",
+      "to": "node_39",
+      "lengthKm": 1.25,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_113",
+      "from": "node_40",
+      "to": "bc_umk_bachok",
+      "lengthKm": 1.25,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_114",
+      "from": "bc_umk_bachok",
+      "to": "node_40",
+      "lengthKm": 1.25,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_115",
+      "from": "kb_wakaf_che_yeh",
+      "to": "node_41",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_116",
+      "from": "node_41",
+      "to": "kb_wakaf_che_yeh",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_117",
+      "from": "node_41",
+      "to": "node_42",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_118",
+      "from": "node_42",
+      "to": "node_41",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_119",
+      "from": "node_42",
+      "to": "node_43",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_120",
+      "from": "node_43",
+      "to": "node_42",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_121",
+      "from": "node_43",
+      "to": "node_44",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_122",
+      "from": "node_44",
+      "to": "node_43",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_123",
+      "from": "node_44",
+      "to": "node_45",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_124",
+      "from": "node_45",
+      "to": "node_44",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_125",
+      "from": "node_45",
+      "to": "kb_melor",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_126",
+      "from": "kb_melor",
+      "to": "node_45",
+      "lengthKm": 2.54,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_127",
+      "from": "kb_melor",
+      "to": "node_46",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_128",
+      "from": "node_46",
+      "to": "kb_melor",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_129",
+      "from": "node_46",
+      "to": "node_47",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_130",
+      "from": "node_47",
+      "to": "node_46",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_131",
+      "from": "node_47",
+      "to": "node_48",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_132",
+      "from": "node_48",
+      "to": "node_47",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_133",
+      "from": "node_48",
+      "to": "node_49",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_134",
+      "from": "node_49",
+      "to": "node_48",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_135",
+      "from": "node_49",
+      "to": "node_50",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_136",
+      "from": "node_50",
+      "to": "node_49",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_137",
+      "from": "node_50",
+      "to": "node_51",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_138",
+      "from": "node_51",
+      "to": "node_50",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_139",
+      "from": "node_51",
+      "to": "pp_pasir_puteh_town",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_140",
+      "from": "pp_pasir_puteh_town",
+      "to": "node_51",
+      "lengthKm": 2.67,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_141",
+      "from": "pp_pasir_puteh_town",
+      "to": "node_52",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_142",
+      "from": "node_52",
+      "to": "pp_pasir_puteh_town",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_143",
+      "from": "node_52",
+      "to": "node_53",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_144",
+      "from": "node_53",
+      "to": "node_52",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_145",
+      "from": "node_53",
+      "to": "node_54",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_146",
+      "from": "node_54",
+      "to": "node_53",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_147",
+      "from": "node_54",
+      "to": "pp_tok_bali",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_148",
+      "from": "pp_tok_bali",
+      "to": "node_54",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_149",
+      "from": "bc_umk_bachok",
+      "to": "node_55",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_150",
+      "from": "node_55",
+      "to": "bc_umk_bachok",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_151",
+      "from": "node_55",
+      "to": "node_56",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_152",
+      "from": "node_56",
+      "to": "node_55",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_153",
+      "from": "node_56",
+      "to": "node_57",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_154",
+      "from": "node_57",
+      "to": "node_56",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_155",
+      "from": "node_57",
+      "to": "node_58",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_156",
+      "from": "node_58",
+      "to": "node_57",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_157",
+      "from": "node_58",
+      "to": "node_59",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_158",
+      "from": "node_59",
+      "to": "node_58",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_159",
+      "from": "node_59",
+      "to": "pp_tok_bali",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_160",
+      "from": "pp_tok_bali",
+      "to": "node_59",
+      "lengthKm": 2.63,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_161",
+      "from": "kb_wakaf_che_yeh",
+      "to": "node_60",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_162",
+      "from": "node_60",
+      "to": "kb_wakaf_che_yeh",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_163",
+      "from": "node_60",
+      "to": "node_61",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_164",
+      "from": "node_61",
+      "to": "node_60",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_165",
+      "from": "node_61",
+      "to": "node_62",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_166",
+      "from": "node_62",
+      "to": "node_61",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_167",
+      "from": "node_62",
+      "to": "node_63",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_168",
+      "from": "node_63",
+      "to": "node_62",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_169",
+      "from": "node_63",
+      "to": "kb_ketereh",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_170",
+      "from": "kb_ketereh",
+      "to": "node_63",
+      "lengthKm": 2.81,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_171",
+      "from": "kb_ketereh",
+      "to": "node_64",
+      "lengthKm": 1.88,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_172",
+      "from": "node_64",
+      "to": "kb_ketereh",
+      "lengthKm": 1.88,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_173",
+      "from": "node_64",
+      "to": "node_65",
+      "lengthKm": 1.88,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_174",
+      "from": "node_65",
+      "to": "node_64",
+      "lengthKm": 1.88,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_175",
+      "from": "node_65",
+      "to": "kb_kok_lanas",
+      "lengthKm": 1.88,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_176",
+      "from": "kb_kok_lanas",
+      "to": "node_65",
+      "lengthKm": 1.88,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_177",
+      "from": "kb_kok_lanas",
+      "to": "node_66",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_178",
+      "from": "node_66",
+      "to": "kb_kok_lanas",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_179",
+      "from": "node_66",
+      "to": "node_67",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_180",
+      "from": "node_67",
+      "to": "node_66",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_181",
+      "from": "node_67",
+      "to": "node_68",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_182",
+      "from": "node_68",
+      "to": "node_67",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_183",
+      "from": "node_68",
+      "to": "node_69",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_184",
+      "from": "node_69",
+      "to": "node_68",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_185",
+      "from": "node_69",
+      "to": "node_70",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_186",
+      "from": "node_70",
+      "to": "node_69",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_187",
+      "from": "node_70",
+      "to": "mc_machang_town",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_188",
+      "from": "mc_machang_town",
+      "to": "node_70",
+      "lengthKm": 2.76,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_189",
+      "from": "mc_machang_town",
+      "to": "node_71",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_190",
+      "from": "node_71",
+      "to": "mc_machang_town",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_191",
+      "from": "node_71",
+      "to": "node_72",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_192",
+      "from": "node_72",
+      "to": "node_71",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_193",
+      "from": "node_72",
+      "to": "mc_uitm",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_194",
+      "from": "mc_uitm",
+      "to": "node_72",
+      "lengthKm": 0.5,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_195",
+      "from": "mc_machang_town",
+      "to": "node_73",
+      "lengthKm": 2.94,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_196",
+      "from": "node_73",
+      "to": "mc_machang_town",
+      "lengthKm": 2.94,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_197",
+      "from": "node_73",
+      "to": "node_74",
+      "lengthKm": 2.94,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_198",
+      "from": "node_74",
+      "to": "node_73",
+      "lengthKm": 2.94,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_199",
+      "from": "node_74",
+      "to": "tm_tanah_merah_town",
+      "lengthKm": 2.94,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_200",
+      "from": "tm_tanah_merah_town",
+      "to": "node_74",
+      "lengthKm": 2.94,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_201",
+      "from": "pm_pasir_mas_town",
+      "to": "node_75",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_202",
+      "from": "node_75",
+      "to": "pm_pasir_mas_town",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_203",
+      "from": "node_75",
+      "to": "node_76",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_204",
+      "from": "node_76",
+      "to": "node_75",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_205",
+      "from": "node_76",
+      "to": "node_77",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_206",
+      "from": "node_77",
+      "to": "node_76",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_207",
+      "from": "node_77",
+      "to": "node_78",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_208",
+      "from": "node_78",
+      "to": "node_77",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_209",
+      "from": "node_78",
+      "to": "node_79",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_210",
+      "from": "node_79",
+      "to": "node_78",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_211",
+      "from": "node_79",
+      "to": "node_80",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_212",
+      "from": "node_80",
+      "to": "node_79",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_213",
+      "from": "node_80",
+      "to": "node_81",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_214",
+      "from": "node_81",
+      "to": "node_80",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_215",
+      "from": "node_81",
+      "to": "node_82",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_216",
+      "from": "node_82",
+      "to": "node_81",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_217",
+      "from": "node_82",
+      "to": "node_83",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_218",
+      "from": "node_83",
+      "to": "node_82",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_219",
+      "from": "node_83",
+      "to": "tm_tanah_merah_town",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_220",
+      "from": "tm_tanah_merah_town",
+      "to": "node_83",
+      "lengthKm": 2.6,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_221",
+      "from": "tm_tanah_merah_town",
+      "to": "node_84",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_222",
+      "from": "node_84",
+      "to": "tm_tanah_merah_town",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_223",
+      "from": "node_84",
+      "to": "node_85",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_224",
+      "from": "node_85",
+      "to": "node_84",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_225",
+      "from": "node_85",
+      "to": "node_86",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_226",
+      "from": "node_86",
+      "to": "node_85",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_227",
+      "from": "node_86",
+      "to": "node_87",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_228",
+      "from": "node_87",
+      "to": "node_86",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_229",
+      "from": "node_87",
+      "to": "node_88",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_230",
+      "from": "node_88",
+      "to": "node_87",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_231",
+      "from": "node_88",
+      "to": "node_89",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_232",
+      "from": "node_89",
+      "to": "node_88",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_233",
+      "from": "node_89",
+      "to": "tm_batugajah",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_234",
+      "from": "tm_batugajah",
+      "to": "node_89",
+      "lengthKm": 2.83,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_235",
+      "from": "tm_batugajah",
+      "to": "node_90",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_236",
+      "from": "node_90",
+      "to": "tm_batugajah",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_237",
+      "from": "node_90",
+      "to": "node_91",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_238",
+      "from": "node_91",
+      "to": "node_90",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_239",
+      "from": "node_91",
+      "to": "node_92",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_240",
+      "from": "node_92",
+      "to": "node_91",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_241",
+      "from": "node_92",
+      "to": "node_93",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_242",
+      "from": "node_93",
+      "to": "node_92",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_243",
+      "from": "node_93",
+      "to": "node_94",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_244",
+      "from": "node_94",
+      "to": "node_93",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_245",
+      "from": "node_94",
+      "to": "jl_jeli_town",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_246",
+      "from": "jl_jeli_town",
+      "to": "node_94",
+      "lengthKm": 2.71,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_247",
+      "from": "jl_jeli_town",
+      "to": "node_95",
+      "lengthKm": 1.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_248",
+      "from": "node_95",
+      "to": "jl_jeli_town",
+      "lengthKm": 1.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_249",
+      "from": "node_95",
+      "to": "node_96",
+      "lengthKm": 1.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_250",
+      "from": "node_96",
+      "to": "node_95",
+      "lengthKm": 1.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_251",
+      "from": "node_96",
+      "to": "jl_umk_jeli",
+      "lengthKm": 1.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_252",
+      "from": "jl_umk_jeli",
+      "to": "node_96",
+      "lengthKm": 1.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_253",
+      "from": "mc_machang_town",
+      "to": "node_97",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_254",
+      "from": "node_97",
+      "to": "mc_machang_town",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_255",
+      "from": "node_97",
+      "to": "node_98",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_256",
+      "from": "node_98",
+      "to": "node_97",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_257",
+      "from": "node_98",
+      "to": "node_99",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_258",
+      "from": "node_99",
+      "to": "node_98",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_259",
+      "from": "node_99",
+      "to": "node_100",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_260",
+      "from": "node_100",
+      "to": "node_99",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_261",
+      "from": "node_100",
+      "to": "node_101",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_262",
+      "from": "node_101",
+      "to": "node_100",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_263",
+      "from": "node_101",
+      "to": "node_102",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_264",
+      "from": "node_102",
+      "to": "node_101",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_265",
+      "from": "node_102",
+      "to": "node_103",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_266",
+      "from": "node_103",
+      "to": "node_102",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_267",
+      "from": "node_103",
+      "to": "node_104",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_268",
+      "from": "node_104",
+      "to": "node_103",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_269",
+      "from": "node_104",
+      "to": "node_105",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_270",
+      "from": "node_105",
+      "to": "node_104",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_271",
+      "from": "node_105",
+      "to": "kk_kuala_krai_town",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_272",
+      "from": "kk_kuala_krai_town",
+      "to": "node_105",
+      "lengthKm": 2.59,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_273",
+      "from": "kk_kuala_krai_town",
+      "to": "node_106",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_274",
+      "from": "node_106",
+      "to": "kk_kuala_krai_town",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_275",
+      "from": "node_106",
+      "to": "node_107",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_276",
+      "from": "node_107",
+      "to": "node_106",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_277",
+      "from": "node_107",
+      "to": "node_108",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_278",
+      "from": "node_108",
+      "to": "node_107",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_279",
+      "from": "node_108",
+      "to": "node_109",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_280",
+      "from": "node_109",
+      "to": "node_108",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_281",
+      "from": "node_109",
+      "to": "node_110",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_282",
+      "from": "node_110",
+      "to": "node_109",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_283",
+      "from": "node_110",
+      "to": "node_111",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_284",
+      "from": "node_111",
+      "to": "node_110",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_285",
+      "from": "node_111",
+      "to": "node_112",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_286",
+      "from": "node_112",
+      "to": "node_111",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_287",
+      "from": "node_112",
+      "to": "node_113",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_288",
+      "from": "node_113",
+      "to": "node_112",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_289",
+      "from": "node_113",
+      "to": "node_114",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_290",
+      "from": "node_114",
+      "to": "node_113",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_291",
+      "from": "node_114",
+      "to": "node_115",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_292",
+      "from": "node_115",
+      "to": "node_114",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_293",
+      "from": "node_115",
+      "to": "kk_dabong",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_294",
+      "from": "kk_dabong",
+      "to": "node_115",
+      "lengthKm": 2.61,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_295",
+      "from": "kk_kuala_krai_town",
+      "to": "node_116",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_296",
+      "from": "node_116",
+      "to": "kk_kuala_krai_town",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_297",
+      "from": "node_116",
+      "to": "node_117",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_298",
+      "from": "node_117",
+      "to": "node_116",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_299",
+      "from": "node_117",
+      "to": "node_118",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_300",
+      "from": "node_118",
+      "to": "node_117",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_301",
+      "from": "node_118",
+      "to": "node_119",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_302",
+      "from": "node_119",
+      "to": "node_118",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_303",
+      "from": "node_119",
+      "to": "node_120",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_304",
+      "from": "node_120",
+      "to": "node_119",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_305",
+      "from": "node_120",
+      "to": "node_121",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_306",
+      "from": "node_121",
+      "to": "node_120",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_307",
+      "from": "node_121",
+      "to": "node_122",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_308",
+      "from": "node_122",
+      "to": "node_121",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_309",
+      "from": "node_122",
+      "to": "node_123",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_310",
+      "from": "node_123",
+      "to": "node_122",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_311",
+      "from": "node_123",
+      "to": "node_124",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_312",
+      "from": "node_124",
+      "to": "node_123",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_313",
+      "from": "node_124",
+      "to": "node_125",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_314",
+      "from": "node_125",
+      "to": "node_124",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_315",
+      "from": "node_125",
+      "to": "node_126",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_316",
+      "from": "node_126",
+      "to": "node_125",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_317",
+      "from": "node_126",
+      "to": "gm_chiku",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_318",
+      "from": "gm_chiku",
+      "to": "node_126",
+      "lengthKm": 4.04,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_319",
+      "from": "gm_chiku",
+      "to": "node_127",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_320",
+      "from": "node_127",
+      "to": "gm_chiku",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_321",
+      "from": "node_127",
+      "to": "node_128",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_322",
+      "from": "node_128",
+      "to": "node_127",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_323",
+      "from": "node_128",
+      "to": "node_129",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_324",
+      "from": "node_129",
+      "to": "node_128",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_325",
+      "from": "node_129",
+      "to": "node_130",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_326",
+      "from": "node_130",
+      "to": "node_129",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_327",
+      "from": "node_130",
+      "to": "node_131",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_328",
+      "from": "node_131",
+      "to": "node_130",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_329",
+      "from": "node_131",
+      "to": "node_132",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_330",
+      "from": "node_132",
+      "to": "node_131",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_331",
+      "from": "node_132",
+      "to": "node_133",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_332",
+      "from": "node_133",
+      "to": "node_132",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_333",
+      "from": "node_133",
+      "to": "node_134",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_334",
+      "from": "node_134",
+      "to": "node_133",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_335",
+      "from": "node_134",
+      "to": "node_135",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_336",
+      "from": "node_135",
+      "to": "node_134",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_337",
+      "from": "node_135",
+      "to": "node_136",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_338",
+      "from": "node_136",
+      "to": "node_135",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_339",
+      "from": "node_136",
+      "to": "gm_gua_musang_town",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_340",
+      "from": "gm_gua_musang_town",
+      "to": "node_136",
+      "lengthKm": 2.7,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_341",
+      "from": "gm_gua_musang_town",
+      "to": "node_137",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_342",
+      "from": "node_137",
+      "to": "gm_gua_musang_town",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_343",
+      "from": "node_137",
+      "to": "node_138",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_344",
+      "from": "node_138",
+      "to": "node_137",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_345",
+      "from": "node_138",
+      "to": "node_139",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_346",
+      "from": "node_139",
+      "to": "node_138",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_347",
+      "from": "node_139",
+      "to": "node_140",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_348",
+      "from": "node_140",
+      "to": "node_139",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_349",
+      "from": "node_140",
+      "to": "node_141",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_350",
+      "from": "node_141",
+      "to": "node_140",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_351",
+      "from": "node_141",
+      "to": "node_142",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_352",
+      "from": "node_142",
+      "to": "node_141",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_353",
+      "from": "node_142",
+      "to": "node_143",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_354",
+      "from": "node_143",
+      "to": "node_142",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_355",
+      "from": "node_143",
+      "to": "node_144",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_356",
+      "from": "node_144",
+      "to": "node_143",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_357",
+      "from": "node_144",
+      "to": "node_145",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_358",
+      "from": "node_145",
+      "to": "node_144",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_359",
+      "from": "node_145",
+      "to": "node_146",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_360",
+      "from": "node_146",
+      "to": "node_145",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_361",
+      "from": "node_146",
+      "to": "node_147",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_362",
+      "from": "node_147",
+      "to": "node_146",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_363",
+      "from": "node_147",
+      "to": "lj_pos_brooke",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_364",
+      "from": "lj_pos_brooke",
+      "to": "node_147",
+      "lengthKm": 5.14,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 80
+    },
+    {
+      "id": "edge_365",
+      "from": "lj_pos_brooke",
+      "to": "node_148",
+      "lengthKm": 2.03,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_366",
+      "from": "node_148",
+      "to": "lj_pos_brooke",
+      "lengthKm": 2.03,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_367",
+      "from": "node_148",
+      "to": "node_149",
+      "lengthKm": 2.03,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_368",
+      "from": "node_149",
+      "to": "node_148",
+      "lengthKm": 2.03,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_369",
+      "from": "node_149",
+      "to": "lj_lojing_center",
+      "lengthKm": 2.03,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_370",
+      "from": "lj_lojing_center",
+      "to": "node_149",
+      "lengthKm": 2.03,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_371",
+      "from": "jl_jeli_town",
+      "to": "node_150",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_372",
+      "from": "node_150",
+      "to": "jl_jeli_town",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_373",
+      "from": "node_150",
+      "to": "node_151",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_374",
+      "from": "node_151",
+      "to": "node_150",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_375",
+      "from": "node_151",
+      "to": "node_152",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_376",
+      "from": "node_152",
+      "to": "node_151",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_377",
+      "from": "node_152",
+      "to": "node_153",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_378",
+      "from": "node_153",
+      "to": "node_152",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_379",
+      "from": "node_153",
+      "to": "node_154",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_380",
+      "from": "node_154",
+      "to": "node_153",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_381",
+      "from": "node_154",
+      "to": "node_155",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_382",
+      "from": "node_155",
+      "to": "node_154",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_383",
+      "from": "node_155",
+      "to": "node_156",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_384",
+      "from": "node_156",
+      "to": "node_155",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_385",
+      "from": "node_156",
+      "to": "node_157",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_386",
+      "from": "node_157",
+      "to": "node_156",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_387",
+      "from": "node_157",
+      "to": "node_158",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_388",
+      "from": "node_158",
+      "to": "node_157",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_389",
+      "from": "node_158",
+      "to": "node_159",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_390",
+      "from": "node_159",
+      "to": "node_158",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_391",
+      "from": "node_159",
+      "to": "node_160",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_392",
+      "from": "node_160",
+      "to": "node_159",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_393",
+      "from": "node_160",
+      "to": "kk_dabong",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    },
+    {
+      "id": "edge_394",
+      "from": "kk_dabong",
+      "to": "node_160",
+      "lengthKm": 3.23,
+      "oneway": false,
+      "capacity": 1500,
+      "speedLimitKmH": 50
+    }
+  ]
+}
