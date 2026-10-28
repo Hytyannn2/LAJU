@@ -1,6 +1,6 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-28 (brain v2 plan in section 9, built phase by phase after the planner's "go"; git repository since
+Last updated: 2026-10-28 (brain v2 plan in section 9, Phase 0 = the exam done, BAS.MY today vs v1; git repository since
 2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
 minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
 in the AI's designs, live AI map, click a stop for its routes: sections 2, 4, 5, 7, 8)
@@ -31,6 +31,7 @@ Customer: city planners. Goal: a working product + algorithm worth patenting / l
               rl.py        GNN policy + REINFORCE on Kelantan map views    (Phase 5)
               bench.py     Mandl + Kota Bharu benchmarks                   (Phase 4/5)
               export.py    GeoJSON + GTFS                                  (Phase 2/6)
+              exam.py      the exam every design must pass; basmy.json = BAS.MY today   (brain v2, Phase 0)
               server.py    API
               models/route_gnn.pt  trained RL policy (~2 MB, commit it); route_gnn.json = its training progress
               cache/       downloaded data, ~360 MB, not in git (rebuilt by python kelantan.py; rl_cities.pkl,
@@ -110,7 +111,9 @@ own C++ if profiling shows a Python hotspot numpy/scipy cannot fix (none so far:
     npm run dev
     open http://localhost:3000
 
-  Self-checks:   python sim.py | routes.py | rl.py | export.py | kelantan.py | traffic.py   -> "ok ..."
+  Self-checks:   python sim.py | routes.py | rl.py | export.py | kelantan.py | traffic.py | exam.py   -> "ok ..."
+  The exam:      python exam.py "BAS.MY today" "Kelantan network"   (saved runs side by side, ~2 min; python exam.py
+                 --basmy saves basmy.json as the run "BAS.MY today")
   Benchmarks:    python bench.py [ga_seconds]
   Train RL more: python rl.py <minutes> [workers]   (minutes the laptop is awake: sleep does not count, since a
                  2026-10-09 run slept 4 times and used up its clock time asleep; continues from models/route_gnn.pt at lr 1e-4; 4 processes
@@ -431,8 +434,8 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
 =====================================================================
 8. NEXT SESSION - START HERE
 =====================================================================
-  START HERE (2026-10-28): section 9, the brain v2 plan. Nothing in it is built yet: the planner reviews it and says go,
-  then Phase 0. Items 0-5 below are the v1 state it starts from.
+  START HERE (2026-10-28): section 9, the brain v2 plan. Phase 0 (the exam) is done; next is Phase 1 once the planner
+  says go. Items 0-5 below are the v1 state it starts from.
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
@@ -479,7 +482,7 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
      "keep routes stable" penalty if planners need versions that change little.
 
 =====================================================================
-9. BRAIN v2 (planned 2026-10-28; not built yet, waiting for the planner's "go")
+9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phase 1 next)
 =====================================================================
 Why. The planner wants "the best AI public transport planning": Kelantan as dependent on public transport as Japan, not
 car-centric. Measured on the saved "Kelantan network" (v1: 382 buses, 60 routes) on 2026-10-28, the old brain optimised
@@ -540,10 +543,38 @@ the rider model must reproduce BAS.MY's ~2,800 riders a day on BAS.MY's own 16 r
 
 Phases, biggest win first. Each ends with the exam before vs after. The GA tests each rule change (it needs no
 training); the AI retrains once, in Phase 5, when the rules have settled, so no overnight training is wasted.
-  0. Exam. engine/exam.py runs the exam above. BAS.MY's 16 routes entered as locked routes (termini and main stops from
-     the route list; road paths from the bas.my maps or OpenStreetMap bus routes, if mapped). Restores the OSM extract
-     (cache/malaysia.osm.pbf from Geofabrik, ~300 MB; deleted 2026-10-18 to the Recycle Bin: restore it from there if
-     still in it, else download). Starting line: BAS.MY today (64 buses) and v1 (382).
+  0. Exam [x] (2026-10-28). engine/exam.py runs the exam above at the stops a bus serves (every boarding waits half the
+     headway; at most 2 changes: a copy of the network per bus boarded, so a slower path with fewer changes still
+     counts). cache/malaysia.osm.pbf restored from the Recycle Bin (240 MB). BAS.MY: the official GTFS
+     (api.data.gov.my/gtfs-static/mybas-kota-bharu) is empty (headers only) and OSM maps no Kelantan bus routes, so
+     engine/basmy.json holds each route's landmarks in order (from the Transit app's stop lists, placed by their OSM
+     names), its headway and its one-way minutes. python exam.py --basmy saves it as the run "BAS.MY today" (on the
+     website's map too; the website's numbers for it use sim.py's frequencies, the exam its timetable). Traced routes
+     drive into landmarks and U-turn (1-8 U-turns a route, 10 min each), so the exam runs them at their timetable
+     minutes. Without the U-turns, LAJU's road speeds + dwell already match the timetable within ~10% on long routes
+     (D40 177 vs 180 min, D52 121 vs 119, D61 154 vs 149). Checks: 706 stops (Transit: 718); 53 buses at once (BAS.MY
+     owns 64: the rest are spares).
+     Starting line (access = on foot or by bus, door to door; in brackets: on foot alone, the same for every network):
+                                          BAS.MY today (53 buses)    v1 "Kelantan network" (382 buses)
+       covered, 400 m town / 800 m rural  36% / 20%, all 29%         46% / 27%, all 38%
+       nearest school, 30 min             50% (44%)                  56% (44%)
+       clinic or hospital, 45 min         33% (19%)                  53% (19%)
+       mall or market, 45 min             18% (9%)                   44% (9%)
+       rail station, 45 min                9% (4%)                   21% (4%)
+       park, stadium or beach, 60 min     30% (8%)                   46% (8%)
+       nearest town, 45 min               14% (5%)                   33% (5%)
+       average of the 6                   26%                        42%
+       SK Kota -> KB Mall                 55 min, direct             39 min, 1 change
+       SK Kota -> AEON Mall               84 min, 1 change           38 min, 1 change
+       Wakaf Che Yeh -> HRPZ II           63 min, direct             52 min, 2 changes
+       routes over 1.5x / both ends rest  4 / 8 of 16                1 / 1 of 60
+       worst district: Gua Musang         7%                         21%
+     -> v1 reaches more people, with 7x the buses, and almost never ends a route where a bus can wait (1 of 60). The
+     target for v2: beat BAS.MY's 26% with the same buses. Most of BAS.MY's door-to-door time is waiting: a bus an hour
+     means 30 min on average at every boarding.
+     Not yet: Mumford's benchmark cities (Phase 6). Known limits: rail = every OSM station and stop (Rantau Panjang's
+     may see no trains); ECRL's 2 Kelantan stations (Kota Bharu; Cherang Tuli, Pasir Puteh; passengers from Jan 2027)
+     are not in OSM yet; D51 and D52 stop at the state border.
   1. Who travels where. Demand rebuilt: ~2,000 small zones and short trips kept (a trip inside one key stop's area is a
      walk or a local hop, no longer pushed across the state); trips by purpose (school, work, hospital, shopping,
      recreation, rail, border), each with its own pull (pupils, beds, floor area, ...) and time of day (morning peak,
