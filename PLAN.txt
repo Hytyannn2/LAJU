@@ -1,0 +1,476 @@
+LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
+Implementation plan. Read this first at the start of every session, and update it at the end.
+Last updated: 2026-10-18 15:00 (RM 100 per unserved trip, 3+ changes = no bus, minimum service 30/30/60 with frequency by
+demand, crooked routes per minute, malls / supermarkets / markets sized by their building, Train takes in the AI's
+designs, live AI map, click a stop for its routes, cleanup: sections 2, 4, 5, 7, 8)
+
+=====================================================================
+1. WHAT WE ARE BUILDING (plain words)
+=====================================================================
+A city planner opens a dark map of Kelantan, moves it to the area to design, and LAJU:
+  - decides where the bus stops go, from real population and destinations, and only where a bus can
+    safely stop (big roads yes; expressways, ramps, roundabouts, bridges no; small roads are not used)
+  - designs bus routes along real roads (baseline, genetic algorithm, deep RL, or RL + GA)
+  - simulates passengers (trip time, transfers, unserved trips, bus loads) and traffic (SUMO)
+  - exports GeoJSON (QGIS), GTFS and a printable report. Every run is saved on the planner's computer.
+Buses only (no trams or trains). Kelantan only (the map cannot leave the state).
+
+Customer: city planners. Goal: a working product + algorithm worth patenting / licensing as IP.
+
+=====================================================================
+2. ARCHITECTURE
+=====================================================================
+  web/      Next.js 16 + React + Tailwind + Leaflet (dark OSM tiles, locked to Kelantan)
+              src/app/Designer.tsx  planner UI      src/app/MapView.tsx  map
+  engine/   Python FastAPI server (the brain)
+              kelantan.py  data + AI stop placement + trip matrix          (Phase 2)
+              sim.py       passenger simulation + score v2                 (Phase 3)
+              traffic.py   SUMO traffic simulation                         (Phase 3)
+              routes.py    baseline + genetic algorithm                    (Phase 4)
+              rl.py        GNN policy + REINFORCE on Kelantan map views    (Phase 5)
+              bench.py     Mandl + Kota Bharu benchmarks                   (Phase 4/5)
+              export.py    GeoJSON + GTFS                                  (Phase 2/6)
+              server.py    API
+              models/route_gnn.pt  trained RL policy (~2 MB, commit it); route_gnn.json = its training progress
+              cache/       downloaded data, ~360 MB, not in git (rebuilt by python kelantan.py; rl_cities.pkl,
+                           the RL training maps, by python rl.py)
+  results/  every run saved as JSON (input + output). Not in git.
+
+  Browser -> Next.js (localhost:3000) --"/engine/*" proxy--> Python (localhost:8000)
+  The proxy lives in web/next.config.ts (rewrites; timeout raised to 10 min for GA and SUMO runs).
+
+How the AI places stops and builds the network (kelantan.build):
+  1. Key stops: weighted k-means over 400 m population hexagons plus places (hospital, clinic, school,
+     university, market, mall, bus station, weighted by the trips they attract). Planner stops are fixed.
+  2. Each key stop moves to the nearest OSM road node where a bus may stop: mid-block on a trunk /
+     primary / secondary / tertiary road, >= 30 m from junctions, roundabouts, bridges, tunnels, ramps.
+     The road classes live in ONE table (kelantan.ROADS): speed + "may stop here".
+  3. Links: key stops whose road catchments touch (plus two-hop neighbours) are joined by the quickest
+     road path that passes no other key stop. Turning back at a key stop is a U-turn (sim.UTURN_MIN).
+  4. Intermediate stops along each link: every 400 m (dense) / 800 m / 1.5 km (rural), only on
+     stop-able road with >= 50 people nearby; links on the same road share stops.
+  5. Trips: gravity model. Residents make 0.05 bus trips/day, spread by attraction x exp(-0.05 x min).
+     A place attracts kelantan.PLACES trips by its kind; a hospital by its district's beds, a school by its district's
+     pupils, and (since 2026-10-18) a mall, supermarket or market by its building's footprint in OSM
+     (kelantan.TRIPS_PER_M2).
+Score v2 (sim.py) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
+  10 min since 2026-10-10, Mandl 5) + bus-km x RM per bus-km of the route's category + RM 100 per unserved trip (50 until
+  2026-10-18; a trip needing 3+ changes counts as unserved since 2026-10-18, kelantan.MAX_TRANSFERS)) / trips.
+  Budgets (max buses, max km), routes over the time cap and crooked routes (over 1.5x the quickest drive between their
+  two ends, since 2026-10-10; +1/600 per minute since 2026-10-18, sim.CROOKED_MIN) multiply it. Walking counts homes and, since 2026-10-10, the doors of the places trips go
+  to. All knobs sit at the top of kelantan.py and sim.py: they are assumptions, not survey data.
+Bus categories (sim.CATEGORIES, since 2026-10-08): a route's length and stops pick its category.
+  shuttle    under 20 km and 25 stops   minibus 30 pax, RM 2.5/bus-km, minimum service (planner) default 30 min
+  local      up to 40 km and 65 stops   city bus 60 pax, RM 4.0/bus-km, default 30 min
+  inter-town longer                     coach 45 pax,    RM 3.5/bus-km, default 60 min
+  (defaults 10 / 15 / 30 until 2026-10-18). Each route runs at the minimum service or more often: as its busiest hour
+  needs (peak load / bus capacity, Baaj & Mahmassani 1991) or as its riders' waiting is worth (square-root rule,
+  Mohring 1972: f = sqrt(30 x boardings x RM per minute / (2 x route km x service hours x RM per bus-km))), and its
+  riders wait half the headway it really runs (the routing assumes the minimum service). Kelantan scores from before
+  a rule change are not comparable with later ones.
+
+How the deep-RL designer works (rl.py, rewritten 2026-10-08 evening):
+  1. Decisions: where a route starts, which stop it heads for next (the bus takes the quickest road path
+     there, so one decision can cross the map), or that the route ends. Masked: max stops, route-time cap,
+     no U-turn where two legs meet, never back through the route's own stops.
+  2. Network: a 6-layer encoder (width 128) passes messages along road links AND along trips (who travels
+     where), once per map; a 1-layer decoder reads the design so far at every decision (covered stops,
+     each stop's trips with no direct route yet, the trips a leg would make direct, leg minutes and stops).
+     No per-size weights: the same network runs on 15 or 150 key stops.
+  3. Training (python rl.py [minutes]): REINFORCE with a shared baseline (Kool 2019, POMO 2020): 16 designs
+     per map, each scored by sim.evaluate (the same RM score the planner sees), pushed up or down by how much
+     better than the 16's mean (log score). Maps: 300 random Kelantan map views (15-150 key stops, routes,
+     headways and caps varied) + 20% synthetic minutes-score cities. 4 worker processes update one shared
+     network (Hogwild). Saved when it beats the saved policy on 9 held-out maps (best of 8 samples).
+  4. Design time: best of 32 samples (1-4 s), then active search (Bello 2017, Hottung 2022): the policy keeps
+     training on the planner's own map for the search time. "RL + GA": the GA starts from 8 policy samples. "Train"
+     (server._train) adds 16 new policy samples to the GA's population at the start and every 10 min (AI_EVERY_S), so a
+     saved network takes in what the policy learns while python rl.py trains (since 2026-10-18).
+  5. Live (since 2026-10-18): while python rl.py trains, its main process draws the policy's design of the saved
+     "Kelantan network" (rl.showcase / rl.frame: best of 8 with a fixed seed, so the lines move only when the policy
+     changed) every ~15 s into the temp folder (server.RL_LIVE); the website's AI training tab shows it on the map.
+
+C++: SUMO (Eclipse SUMO, C++) runs as a binary from Python (pip package eclipse-sumo). We only write our
+own C++ if profiling shows a Python hotspot numpy/scipy cannot fix (none so far: one evaluation ~1 ms).
+
+=====================================================================
+3. HOW TO RUN (two terminals)
+=====================================================================
+  Terminal 1 (engine):
+    cd engine
+    python -m venv .venv                                   (first time only; Python 3.14)
+    .venv\Scripts\pip install -r requirements.txt          (first time only)
+    .venv\Scripts\python kelantan.py                       (first time only: ~300 MB download, ~5 min)
+    .venv\Scripts\python -m uvicorn server:app --port 8000 --reload
+
+  Terminal 2 (web):
+    cd web
+    npm install                                            (first time only)
+    npm run dev
+    open http://localhost:3000
+
+  Self-checks:   python sim.py | routes.py | rl.py | export.py | kelantan.py | traffic.py   -> "ok ..."
+  Benchmarks:    python bench.py [ga_seconds]
+  Train RL more: python rl.py <minutes> [workers]   (minutes the laptop is awake: sleep does not count, since a
+                 2026-10-09 run slept 4 times and used up its clock time asleep; continues from models/route_gnn.pt at lr 1e-4; 4 processes
+                 by default, all 8 cores, ~4 GB RAM; 2 workers ~2 GB, for a busy 16 GB laptop: a 4-worker run
+                 was stopped for low memory on 2026-10-08; the first run builds cache/rl_cities.pkl, ~10 min;
+                 replaces models/route_gnn.pt only when better; live in the website's AI training tab: its curve and
+                 its own design of the Kelantan network on the map. Delete cache/rl_cities.pkl whenever kelantan.build
+                 or the Problem fields change, e.g. a knob at the top of kelantan.py; sim.evaluate changes do not need it)
+
+  The project sits in OneDrive: file watching is unreliable there. If a change does not show up,
+  restart `npm run dev` / uvicorn.
+
+=====================================================================
+4. PHASES
+=====================================================================
+Status: [x] done  [ ] todo  [~] partly
+
+PHASE 1 - Map UI + baseline route generator                    [x]  (2026-10-08 morning)
+  Straight-line hub-and-spoke baseline; replaced in Phase 2 by road-based routing.
+
+PHASE 2 - Real-world data                                      [x]  (2026-10-08)
+  [x] Road network for Kelantan from OpenStreetMap, cached (Geofabrik extract via GDAL, see decisions)
+  [x] AI stop placement on roads where a bus may stop (road class aware); planner can force stops
+  [x] Routes follow real roads (stop graph over the OSM road graph)
+  [x] Real demand: Kontur population grid scaled to DOSM 2025 district estimates; OSM places (746)
+  [x] Origin-destination matrix (gravity model, uncalibrated)
+  [x] Load/save scenarios from results/ in the UI
+  [x] Export GeoJSON
+  Known limits: the gravity model and trip rate are assumptions; one-way pairs draw the return trip
+  on the outbound road; OSM lane counts are not used.
+
+PHASE 3 - Traffic simulation                                   [x]  (2026-10-08)
+  [x] Passenger assignment: travel time, transfers, unserved demand, bus load per segment, fleet
+      (sim.py reproduces Mumford 2013's published Mandl numbers exactly - see results)
+  [x] SUMO peak hour: background cars from the trip matrix, buses on the planned roads, kerb stops
+  [x] Congestion heatmap overlay on the map
+  [x] Score v2 = passenger time + operator cost + unserved demand (+ budgets)
+  Known limits: background traffic volume is a knob (traffic.CARS_PER_TRIP, x scale in UI), not
+  calibrated with counts; SUMO congestion is reported, not fed back into the planning speeds.
+
+PHASE 4 - Optimiser benchmark (genetic algorithm)              [x]  (2026-10-08)
+  [x] GA over whole route sets using the Phase 3 score (Mumford-style crossover, grow/shrink mutation)
+  [x] Mandl's Swiss network benchmark vs published route sets
+
+PHASE 5 - Deep reinforcement learning                          [x]  (rewritten 2026-10-08 evening)
+  [x] First version (morning): stop-by-stop GNN, MaskablePPO on synthetic cities; lost to the GA and, on
+      large Kelantan maps, to the baseline (section 7). Replaced, see section 2 "How the deep-RL designer works"
+  [x] Decisions head for a stop along the quickest road path; encoder over road links + trips
+  [x] REINFORCE with shared baseline on 300 real Kelantan map views (RM score) + synthetic cities, 4 processes
+  [x] Active search: "Deep RL" keeps learning the planner's map during the search time
+  [x] Beat the Phase 4 GA at equal time: RL+GA 9% cheaper than the GA over 7 Kelantan maps, RL alone 8% (30 s
+      each, section 7); RL with active search beats the GA on Mandl (10.34 vs 10.38 min)
+  [x] RL + GA hybrid (RL proposes 8 route sets, GA refines): the default designer on the website
+  [x] Tested: GA whose "new route" mutation asks the policy (Holliday & Dudek 2024): no gain over RL + GA at 30 s,
+      removed 2026-10-18
+
+PHASE 6 - Product for planners                                 [~]
+  [x] Compare two scenarios side by side
+  [x] Planner edits: lock a route, force a stop, budget (max buses / max route km)
+  [x] Export GTFS (frequency-based) + PDF report (browser print)
+  [x] Train until paused: the GA keeps improving a saved run in a background thread (server.py
+      /runs/{id}/train, /pause); live cost curve + map follow the best design; the run is saved to
+      results/ every 60 s and on pause, and resumes any time, also after an engine restart
+  [x] Longest-route cap (default 90 min one way, planner setting): soft penalty in sim.evaluate;
+      baseline, GA and RL also build routes within it
+  [x] Bus categories: shuttle / local / inter-town, each with its bus, cost and headway (section 2);
+      the optimisers learn the mix from the score; the UI shows each route's category and buses
+  [x] Express inter-town, decided per link from riders' time vs walkers' time (section 5); map, GTFS
+      and SUMO drop the skipped stops
+  [x] Walking time to and from stops in the score: covering more streets with stopping buses pays
+  [x] "Kelantan network" button: one state-wide network (150 key stops, 60 routes, RL + GA), designed once,
+      then always the same saved run (named "Kelantan network"), trained live until paused. 60 not 40
+      routes since the planner's comparison (2026-10-08): RM 30.71 vs 34.05 per trip, no bus 2.3% vs
+      24.9% of trips, for 586 vs 409 buses
+  [x] Sidebar in tabs (1. Design / 2. Result / Saved / AI training); rare settings under "More settings";
+      routes per design up to 60 (was 30)
+  [x] AI training tab: the RL's own training curve, live (engine GET /rl/training reads route_gnn.json).
+      Each improvement pops up (and as a desktop notification once allowed) with what changed in its
+      designs on the 6 Kelantan test maps (rl.changes: direct trips, no-bus trips, trip and walk minutes,
+      buses, route km, route types), so the planner sees what the AI learned, not only a number
+  [x] Satellite map by default (dark streets in the layers control); route filter (click a route's colour
+      dot; All / None); moving buses (yellow dots, out and back at the planned minutes, as often as each
+      route runs, 1 s = 1 min; no layover or traffic: SUMO is the realistic one)
+  [x] Live AI map (2026-10-18): the AI training tab draws the policy's own Kelantan network while it trains ("Now" /
+      "Best so far"), next to the saved network's cost; training curves start at the last rule change (a rise in the
+      history = the rules re-scored the design, so older points do not compare)
+  [ ] Desktop/offline packaging: skipped until a customer asks for it
+
+=====================================================================
+5. DECISIONS (and why)
+=====================================================================
+- Baseline heuristic first, deep RL later: RL needs the road graph, demand data and simulator as its
+  environment anyway (Phases 2-3).
+- "Train" in the UI = the GA keeps searching the planner's own map, starting from the design it has (by
+  default an RL + GA design). The curve shows the best cost per improvement; "flat for > half the
+  training time" is the hint that more time will not help. Untested: active search or the policy
+  mutation inside Train on long runs (they only tie RL + GA at 30 s).
+- Deep RL rewrite (2026-10-08 evening). The first policy picked one adjacent stop at a time, saw no
+  travel times and no trip pairs, and trained only on small synthetic cities with a minutes score; on
+  Kelantan it lost to the GA everywhere and, on big maps, to the baseline. Changes, each for a reason:
+  heading for any stop along the quickest path (a route is 2-4 decisions, not 15, and can aim far);
+  messages along trips as well as roads (3 road hops cannot see where people go); training on real
+  Kelantan map views with the real score (what the product runs on); REINFORCE with a shared baseline
+  instead of PPO (no value network, no padding to a fixed size, the standard for routing problems);
+  4 Hogwild processes (8 threads in one process were only 2x one thread). This dropped Gymnasium,
+  Stable-Baselines3 and sb3-contrib from requirements.txt.
+- RL validation = best of 8 samples on 9 held-out maps: greedy alone swung 0.72-0.83 between checks.
+  Training never overwrites a policy that scores better on that set, so a fresh run cannot make the
+  website worse. Held-out maps are random Kelantan views, so they overlap the training views in space.
+- Active search learning rate 1e-3: at 1e-4 it barely moved in 90 s on Kota Bharu; at 1e-3 the score
+  went 36 -> 19 RM/trip from an untrained policy.
+- Longest-route cap: without it the score prefers 5-hour routes on state-wide designs, because an
+  unserved trip costs RM 50 and the gravity model sends trips across the whole state (see section 7).
+- Python for AI/simulation (PyTorch, SUMO, scipy all live there).
+- Save locally as JSON for now; database only if multi-user is needed.
+- Engine server and Next.js are separate processes so long jobs do not freeze the website.
+- OSM from the Geofabrik extract (read locally with GDAL, via geopandas) instead of osmnx/Overpass:
+  on 2026-10-08 both overpass-api.de servers timed out from this network. The extract is one 250 MB
+  download and also gives the places and district boundaries.
+- Two levels of stops: key stops (40-150) are what the GA/RL design over; intermediate stops give
+  walking access. Keeps the optimisation small while stops end up 400 m-1.5 km apart.
+- Road classes decide everything about stops in one table (kelantan.ROADS). Small roads are excluded
+  for buses entirely; expressways carry buses but never stops.
+- Unserved trips cost RM 100 (soft constraint; RM 50 until 2026-10-18). An "e-hailing fare" price made serving people
+  and abandoning them cost about the same, and the GA then designed near-empty networks. At RM 50, on the final rules of
+  2026-10-10 (transfers 10 min, walking to the door), Move stops saved 0.13% by dropping 16% of the state's trips, and the
+  score tied a state network leaving 20.3% of trips without a bus with one leaving 8.5% (33.72 vs 33.77). Serving the area
+  is the goal, so RM 100 (43.94 vs 38.08).
+- RL training cities: up to 60 routes and 2.5 stops per route (was 30 routes, 4 stops per route): the Kelantan network has
+  150 key stops and 60 routes, a setting the policy had never practised (2026-10-18). Synthetic cities' connecting tree is
+  scipy's minimum_spanning_tree (same tree as the hand-written Prim it replaced).
+- U-turns: key stops are mid-block, so a route that leaves a stop by the road it came in on must loop
+  round (sim.UTURN_MIN = 10 min). Generators avoid them; SUMO shows the loops that remain.
+- Bus category is a property of the route (length, stops), not a separate gene: the categories are
+  defined by length and stops, so the GA picks a category by picking the route. Bus size reaches the
+  score through the extra buses a busy route needs, so minibuses win on quiet feeders, city buses on
+  busy corridors, coaches on long thin ones. Per-route frequency = minimum service, what the peak needs or what its
+  riders' waiting is worth, held all day (ponytail: peak/off-peak timetables would cut off-peak bus-km).
+- Fewer buses, same coverage (planner, 2026-10-18: "lesser bus more jimat" but "cover semua"): quiet routes keep a
+  minimum service (30 min in town, 60 between towns, was 10 / 15 / 30) and busy ones run as often as their riders need.
+  The saved state network: 486 buses at the old minimum, 367 at the new, average trip 94 -> 101 min (waiting), RM 45.66
+  -> 42.88 per trip; 30 / 60 / 60 saved 16 buses more but locals hourly is poor town service. Fewer buses does not need
+  fewer routes or slower routes: the routes stay, the quiet ones come less often.
+- 3+ changes = no bus (planner, 2026-10-18): riders do not make such trips (12% of the state's trips needed them);
+  the UTRP literature reports them as d_un. A trip whose quickest path needs more than kelantan.MAX_TRANSFERS (2) changes
+  is taken off before the loads are summed (sim._transfers_and_loads), so it costs RM 100 and rides no bus. ponytail: a
+  slower path with fewer changes is not searched; the 10-min transfer penalty already prefers it when close.
+- Walking is part of passenger time (kelantan.build step 5, sim.Problem.walk): each trip end walks
+  from home to the key stop, or to the nearest stop on a link that ends there while a bus stops on that
+  link. 17 min/km, capped at 15 min (beyond, people ride a motorbike or get dropped off; 30 until
+  2026-10-09), and each walking minute weighs double in the score (heat: WALK_WEIGHT). Precomputed
+  per zone and per link, so an evaluation adds a matrix sum, not a per-home search. Each home counts
+  only its nearest link stop (ponytail: serving a second nearby link saves it nothing more).
+- Route shape (2026-10-10, planner: "our routes look bad"): 12 of the 60 state-network routes took over 1.5x the
+  quickest drive between their two ends (route 32: 80 min for a 23-min drive): hooks into side roads, zigzags, small
+  loops. Nothing in the score cared. sim.Problem.max_detour (Kelantan 1.5, kelantan.MAX_DETOUR): the minutes beyond
+  1.5x, averaged over the routes, multiply the score by 1 + minutes/60. In the score, not in the generators, so
+  baseline, GA, RL and Move stops all obey it; the RL learns it from the reward (no mask: a route that looks crooked
+  halfway can end straight). First version (02:35-03:25) summed the minutes over all routes: on the 60-route network
+  that multiplied the score by 6.8, more than RM 50 per unserved trip is worth, so the GA dropped riders to straighten
+  routes (no bus 2.4% -> 16.5%) and the RL learned tiny routes (no bus 11% -> 79% on its test maps). Averaged, a crooked
+  route still costs more than it saves, but dropping riders never pays (Kota Bharu, GA 30 s: 7 of 8 routes within
+  1.5x, no bus 3.9%). A penalty that multiplies the whole score must stay small next to the unserved cost.
+  2026-10-18 (planner: stronger): averaged over 60 routes, a crooked minute cost 1/3600 of the score, so the state
+  network kept 8 crooked routes; now 1/600 per minute however many routes (the 8-route designs had 1/480 and kept their
+  riders). 1/300 was tried first: x1.29 on the state network, as risky as the first rule.
+- Busy places (2026-10-10, planner: "high-demand places don't get many routes"): on the state network the 15 busiest key
+  stops (22% of trip ends) mostly had 1 route (all stops: 1.6; demand vs routes correlation 0.26) and 31 of 130 big
+  places (hospitals, malls, universities, markets, terminals) had no route within 500 m. Two causes, two changes:
+  (1) only homes walked: a trip ending at a hospital was charged its zone's residents' walk, so a stop 1 km from the
+  hospital cost nothing, and stop spots and Move stops chased homes only. Now each place's visitors walk from its door
+  (kelantan.build walkers wP/wpop, also net["wP"] for Move stops; coverage still counts residents): a place counts as
+  plw * qbar / (TRIP_RATE * (1 + qbar)) residents, qbar = trips per unit of attraction, because a resident starts
+  TRIP_RATE trips and ends TRIP_RATE * qbar while a place ends plw * qbar. Places are ~40% of trip ends in Kota Bharu.
+  (2) A transfer counted 5 min (Mandl's convention), so changing buses was nearly free and the AI spread routes thin;
+  Kelantan now 10 (kelantan.TRANSFER_MIN; studies use 10-15). Test in section 7: every measure improved.
+- Shops by size (2026-10-18, planner: "fix the aeon mall thing"): every mall attracted 2,500 trips a day, so AEON Mall
+  Kota Bharu (32,000 m2, the state's biggest) counted as much as Bazar Tuan Padang (1,500 m2); its key stop ended 568
+  trips a day and had 1 route, and SK Kota -> AEON needed 2 changes. Now a mall, supermarket or market attracts trips by
+  the footprint of the building OSM maps it in (places.json "m2"), at rates that keep each kind's old total over the
+  sized places (0.24 / 0.13 / 0.75 trips per m2; 9 of 11 malls, 36 of 73 supermarkets, 22 of 37 markets are sized; the
+  rest keep PLACES). AEON 7,684 trips, KB Mall 5,105, Mydin 3,237, Pasar Besar Siti Khadijah 3,968. Buildings only:
+  markets mapped as open lots (Pasar Awam Bukit Bunga, 15,000 m2) would outdraw every hospital. Footprint, not floor
+  area (building:levels is on 1 in 6 retail buildings): a 4-storey bazaar counts its ground floor. The state network's
+  key stops are pinned (input.spots), so its routes carried over; AEON's key stop now ends 1,683 trips a day, Mydin's
+  1,883 (1 route, 30% no bus): Train resumed on the new demand at 10:49 to fix both.
+- Express inter-town, per link: key stops only where another bus still stops (free), or where its
+  riders' saved dwell beats the extra walking of the people near the skipped stops. Decided greedily
+  after the passenger assignment (ponytail: riders who would switch to the faster bus are not counted;
+  a second assignment pass would, at twice the cost). No express gene: given the routes, the best
+  express pattern is a local decision, so the GA only shapes the routes.
+- SUMO network is built from the same OSM graph (plain XML -> netconvert) and buses follow the
+  planned roads, so plan and simulation compare like with like. Batch runs, so no TraCI.
+- PDF report = browser print, no PDF library.
+- Map: satellite by default (Esri World Imagery + Esri place names, 2026-10-08 evening, planner's request);
+  "Dark streets" one click away in Leaflet's layers control = OSM tiles with a CSS invert filter (CARTO's
+  dark tiles now need an API key).
+
+=====================================================================
+6. IP / COMMERCIAL NOTES (not legal advice - talk to a patent agent / UKM TTO)
+=====================================================================
+- Keep a dated record of inventions (git commits + notes on what is novel). The project folder is
+  not a git repository yet: run `git init` and commit.
+- Do NOT publish/demo the novel algorithm publicly before filing - public disclosure can kill
+  patentability.
+- Check: UKM IP policy may claim ownership if built with university resources / as a student project.
+- OpenStreetMap public tile server is not for commercial-scale use. Before selling, switch to a
+  paid/self-hosted tile provider. OSM DATA (ODbL) is fine to use with attribution.
+- Esri World Imagery (satellite) and its place-name layer: attribution shown; using them in a product that
+  is sold needs an Esri (ArcGIS Location Platform) licence or another imagery provider.
+- Microsoft Global ML Building Footprints: ODbL (attribution; a shared database derived from it stays ODbL).
+  Hospital beds (MOH, data.gov.my) and school enrolment (KPM, OpenDOSM): CC BY 4.0, credit the source.
+- Data licences: Kontur Population (CC BY 4.0) and OpenDOSM (CC BY 4.0) need attribution in the
+  product and reports. Mandl data is a public benchmark; published route sets are cited by author.
+- Leaflet (BSD), FastAPI (MIT), SUMO (EPL-2.0), PyTorch (BSD), Stable-Baselines3 (MIT),
+  GDAL (MIT): all commercial-friendly.
+
+=====================================================================
+7. BENCHMARK RESULTS (python bench.py 60, CPU laptop)
+=====================================================================
+2026-10-08  Mandl, 6 routes of 2-8 stops, 5-min transfer penalty (ATT in minutes, lower is better)
+                                   ATT    direct  1 transfer  2 transfers  unserved
+  Mumford (2013) best passenger   10.27   95.38%     4.56%       0.06%       0%    (our sim reproduces
+  Kechagiopoulos (2014)           10.22   96.21%     3.66%       0.13%       0%     the published row)
+  Buba & Lee (2018)               10.48   93.06%     6.42%       0.51%       0%
+  Best published (Ahmed, Mumford & Kheiri 2019): 10.18
+  LAJU baseline                   10.18   47.33%     6.62%       0.00%      46%    (ATT of served only)
+  LAJU GA, 60 s                   10.38   93.51%     6.42%       0.06%       0%
+  LAJU RL (GNN, 32 samples), 2 s  10.71   90.04%     9.83%       0.13%       0%
+  LAJU RL + GA, 61 s              10.38   94.16%     5.33%       0.51%       0%
+  -> GA is within 2% of the best published result; RL alone does not beat the GA yet.
+
+2026-10-08  Kota Bharu (6.0-6.2 N, 102.15-102.35 E), 8 routes, 40 AI key stops, bus every 15 min
+  (score = RM per trip; "beyond 2 transfers" counts trips with no path or more than 2 transfers)
+                                   score    ATT    direct   beyond 2 transfers
+  LAJU baseline                    48.58   31.9     3.6%       95.1%
+  LAJU GA, 60 s                    13.32   62.2    24.8%       11.6%
+  LAJU RL (GNN), 3 s               30.11   66.8    18.1%       47.8%
+  LAJU RL + GA, 61 s               12.82   57.8    27.4%        1.8%
+  -> RL + GA beats the GA alone by 3.8% here; RL alone is far behind (trained on small synthetic
+     cities with a minutes-based score, never on Kelantan-sized graphs).
+
+Old RL training (morning policy, 300k PPO steps, 2026-10-08): mean reward -0.62 (random) -> -0.35; greedy
+policy +30% better than the baseline on 20 unseen synthetic cities (but not on Kelantan, see below).
+
+2026-10-08  Whole state (1.9 M people, 95k trips/day), bus every 7 min, GA from scratch (evolve)
+                                       train   RM/trip  no bus  buses  longest route
+  Planner's first run: RL, 40 stops, 8 routes   33.98   16.6%    461     589 min
+  40 stops, 8 routes, no cap            60 s    21.89    0.4%    379     325 min
+  40 stops, 8 routes, cap 90           300 s    27.48   29.4%    176      89 min   (32.30 at 30 s)
+  100 stops, 20 routes, cap 90         180 s    30.91   24.4%    419      90 min   (35.39 at 30 s)
+  150 stops, 30 routes, cap 90         180 s    33.71   32.9%    511      90 min   (45.18 at 30 s,
+                                                                                still falling)
+  -> the score prefers huge routes; with the cap, 8-30 routes cannot connect the whole state. Large
+     setups keep improving for minutes, which is what "Train until paused" is for.
+
+2026-10-08 evening  New deep RL vs GA, 30 s per method, same laptop, today's score (RM per trip; Mandl in
+  minutes). Policy: ~53 min of training in two runs (23 min at lr 2e-4, then 30 min at 1e-4 from its best),
+  0.62x the baseline's cost on the held-out maps (best of 8; the 0.61 logged during training was read while
+  the workers were still changing the network, fixed since: rl.train scores and saves one frozen copy).
+  Old RL = the morning policy, best of 32.
+                          stops routes  base     GA  old RL  greedy  best32  search  RL+GA   NEA
+  Mandl (min)                15     6  33.12  10.38   10.71   11.94   10.68   10.34  10.46  10.34
+  Kota Bharu, no cap         40     8  48.86  19.17   33.76   20.07   19.99   18.76  17.56  18.84
+  Kota Bharu, cap 90         40     8  48.86  19.95   37.43   25.21   20.62   18.93  19.29  18.99
+  Gua Musang                 20     4  39.12  26.21   36.59   30.13   27.91   25.77  25.51  26.56
+  Kuala Krai                 24     5  43.53  24.02   30.29   29.63   25.95   22.28  22.26  22.30
+  Pasir Puteh-Bachok         50    10  47.17  26.35   32.57   31.31   26.10   25.01  24.58  26.20
+  Pasir Mas-Tumpat-KB        80    15  47.17  30.88   37.36   35.02   26.23   25.49  26.29  25.42
+  Whole state, cap 90       150    30  48.55  41.93   41.55   37.07   35.30   35.29  34.15  34.15
+  Cost vs the GA (geometric mean, 7 Kelantan maps): old RL 1.36, greedy 1.12, best of 32 0.98 (in 0.4-4.3 s),
+  search 0.92 (better on 8/8 incl. Mandl), RL+GA 0.91 (7/8), NEA 0.93 (7/8).
+  greedy = one policy rollout (<1 s); best32 = best of 32 samples; search = best32 + active search
+  (the "Deep RL" designer); NEA = RL+GA whose new-route mutation asks the policy. Cap 90 unless noted.
+  -> the AI now beats the GA at equal time, and its lead grows with the map: 15-19% on the 80- and
+     150-stop maps. The best published Mandl result (10.18) is still ahead of everything here.
+  Reproduce: python bench.py 30 prints the Mandl and Kota Bharu (no cap) rows: baseline, GA, best32, search
+  and RL+GA (old RL, greedy and NEA were a one-off script).
+
+2026-10-10  Kota Bharu (6.0-6.2 N, 102.15-102.35 E), 40 key stops, 8 routes, cap 90, GA 30 s, one run per rule set
+  (scratchpad script; each design judged on what riders get, not on its own score)
+                                     homes within  place trips with a  direct  no bus  routes at the 8
+                                     500 m         stop within 300 m                    busiest stops (mean)
+  homes walk, transfer 5 (before)        34%             33%            16%    16.8%        1.0
+  homes walk, transfer 10                35%             34%            19%    13.5%        1.2
+  door walk, transfer 5                  43%             67%            20%     8.6%        1.2
+  door walk, transfer 10 (now)           45%             69%            22%     0.0%        1.6
+
+2026-10-10  State network ("Kelantan network", 150 key stops, 60 routes) on that night's final rules, planner's check
+  (before = the network at 02:30, older rules; Move stops then ran on both until a pass kept nothing)
+                                      before         current + Move stops   fresh RL+GA 300 s + Move stops
+  RM per trip (RM 50 per unserved)       -              33.767                  33.722
+  no bus                               2.4%              8.5%                    20.3% (4.1% before Move stops)
+  routes over 1.5x                 12 of 60 (3.5x)     7 (worst 1.61x)          3
+  big places, no stop in 500 m       31 of 130           19                       15
+  big-place trips, stop in 300 m        -               57%                      76%
+  routes at 15 busiest stops           1.6              2.5                      2.9
+  -> Move stops saved 0.13% by dropping riders: fixed 2026-10-18 by RM 100 per unserved trip (section 5).
+
+2026-10-18  Kelantan network after this session's changes (RM 100 per unserved trip; scratchpad script, as above)
+                                   2026-10-10 07:08   AI alone (best of 8)   now (Train with the AI's designs)
+  RM per trip (RM 100 rule)            38.076              33.317                  31.772
+  no bus                                8.5%                2.7%                    1.0%
+  direct / 3+ transfers or none     19.6% / -          21.3% / 21.4%           24.8% / 12.2%
+  buses / route km                  579 / -            550 / 1309              549 / 1663
+  people within 500 m of a stop         -                39.2%                   41.2%
+  routes over 1.5x                   7 (1.61x)          5 (1.95x)               8 (7 at 1.52-1.70x, one 14-min
+                                                                                  shuttle at 3.38x)
+  big places, no stop in 500 m         19                  20                      17
+  big-place trips, stop in 300 m       57%                 58%                     60%
+  routes at 15 busiest stops           2.5                 3.3                     3.9
+  Kota (SK Kota) -> KB Mall          -              1 transfer, 75 min      direct (route 26), 30 min
+  Wakaf Che Yeh -> HRPZ II hospital  -              1 transfer, 57 min      3 transfers, 95 min
+  (minutes = wait + ride + 10-min transfer penalty, walking apart). The policy alone had beaten 4.3 h of GA + Move
+  stops, so Train now takes the AI's designs every 10 min (section 2). AI alone 33.317 = the saved policy; 31.772 = the
+  best design python rl.py drew live in its first minutes on the new rule.
+
+=====================================================================
+8. NEXT SESSION - START HERE
+=====================================================================
+  0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
+     - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
+       Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
+       no bus (kelantan.MAX_TRANSFERS); fewer buses ("lesser bus more jimat", but "kita nak bus kita cover semua"): minimum
+       service 30 / 30 / 60 min, more often where riders need it (section 2); crooked routes cost per minute, not
+       averaged over the routes (sim.CROOKED_MIN). The saved "Kelantan network" under these rules (its input.headways
+       set to 30/30/60 by hand): RM 38.09 per trip, no bus within 2 changes 9.4%, 367 buses (549 under the old minimum
+       service), direct 24.1%, average trip 101 min; Train resumed on it at 05:27.
+     - All stopped at 15:00 (the planner went to game): the AI school had finished on its own (484 min, held-out ratio
+       ~0.49); Train paused and saved at generation 20,306, RM 31.90 per trip (33.14 at 11:07). To resume, the three
+       minimized windows (closing Claude Code does not stop them; closing a window does), at BelowNormal priority
+       because the planner games on this laptop (16 GB: 1 RL worker; use 4 when it is free): "LAJU engine" (uvicorn,
+       no --reload) training "Kelantan network"; "LAJU website" (npm run dev); "LAJU AI school" (python rl.py <min> 3).
+     - Watch: http://localhost:3000, tab "AI training" (the AI's own Kelantan network, lines move every ~15 s) and tab
+       "2. Result" after the green button (the saved network; takes the AI's designs every 10 min).
+     - Checked at 10:23: the crooked-route penalty did not drop riders. Saved network RM 38.09 -> 33.09 per trip, no bus
+       within 2 changes 9.4% -> 7.4%, 367 -> 376 buses, direct 24.1% -> 24.8%, routes over 1.5x 7 -> 3 (worst 1.97x).
+       The AI school's held-out ratio per hour 0.515, 0.503, 0.493, 0.485, 0.479 (still learning); its own Kelantan
+       design (best of 8) ~RM 34.3, behind the saved network. Weak spot: AEON Mall Kota Bharu has 2 routes within 300 m
+       (KB Mall 6), so SK Kota -> AEON needs 2 changes, 115 min; SK Kota -> KB Mall 1 change, 70 min.
+     - Website, 2026-10-18 (planner: "remove the left click to add a custom stop ... when i left click on a stop itll
+       show info"): clicking the map no longer adds a forced stop ("Your stops" shows only for a loaded scenario that has
+       some); clicking a stop opens its routes, its stop number on each, how often a bus comes and the route's buses.
+       It first did nothing: the moving-bus canvas (pane "buses", above the stops) took every click and hover, so stop
+       tooltips had been dead since the buses were added; that pane is now pointer-events: none. Not yet clicked in a
+       browser after this fix: check it first.
+     - Waiting for the planner's yes: trips to crucial places (schools, hospitals, clinics, universities, colleges, bus
+       terminals; 62% of trips) count double in the cost, so the AI serves them first. HRPZ II: 42% of its trips need
+       2 changes or no bus; 161 of 427 schools have no stop within 500 m.
+  1. Run both servers (restart both after edits: OneDrive), press "Kelantan network", let it train,
+     then "Simulate peak hour".
+  2. git init + first commit (dated record for IP). The RL rewrite (section 2) is the newest invention.
+  3. Calibrate the knobs (trip rate, gravity beta, value of time, bus cost, background traffic) with
+     real data: APAD/BAS.MY ridership, traffic counts, a household survey if UKM has one.
+  4. Phase 5 follow-ups: train longer (python rl.py 480 overnight); a fixed seed for the GA/RL time limits if planners
+     need repeatable designs; active search inside "Train" on long runs; the best published Mandl result (10.18) is
+     ahead.
+  5. Whole-state designs (section 7): without a cap the cheapest network has 5-hour routes; with the
+     90-min cap a quarter of trips get no bus. Needs trunk + feeder (intercity routes with their own
+     cap and headway) or district-by-district designs, and a check of the gravity model, which sends
+     rural trips across the state (BETA, or a doubly constrained model once survey data exists).
+     The "Kelantan network" uses 60 routes (the limit) and still reaches only ~36% of people within 500 m;
+     next levers: more key stops (limit 150) or feeder routes. With a stable master network, add a
+     "keep routes stable" penalty if planners need versions that change little.
