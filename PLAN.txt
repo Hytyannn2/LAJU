@@ -1,8 +1,9 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-18 15:00 (RM 100 per unserved trip, 3+ changes = no bus, minimum service 30/30/60 with frequency by
-demand, crooked routes per minute, malls / supermarkets / markets sized by their building, Train takes in the AI's
-designs, live AI map, click a stop for its routes, cleanup: sections 2, 4, 5, 7, 8)
+Last updated: 2026-10-28 (brain v2 plan in section 9, built phase by phase after the planner's "go"; git repository since
+2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
+minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
+in the AI's designs, live AI map, click a stop for its routes: sections 2, 4, 5, 7, 8)
 
 =====================================================================
 1. WHAT WE ARE BUILDING (plain words)
@@ -311,8 +312,8 @@ PHASE 6 - Product for planners                                 [~]
 =====================================================================
 6. IP / COMMERCIAL NOTES (not legal advice - talk to a patent agent / UKM TTO)
 =====================================================================
-- Keep a dated record of inventions (git commits + notes on what is novel). The project folder is
-  not a git repository yet: run `git init` and commit.
+- Keep a dated record of inventions (git commits + notes on what is novel). Git repository since 2026-10-28 (local
+  only, first commit 88513f8). The planner calls LAJU a side project (2026-10-28): no patent filing planned for now.
 - Do NOT publish/demo the novel algorithm publicly before filing - public disclosure can kill
   patentability.
 - Check: UKM IP policy may claim ownership if built with university resources / as a student project.
@@ -430,6 +431,8 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
 =====================================================================
 8. NEXT SESSION - START HERE
 =====================================================================
+  START HERE (2026-10-28): section 9, the brain v2 plan. Nothing in it is built yet: the planner reviews it and says go,
+  then Phase 0. Items 0-5 below are the v1 state it starts from.
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
@@ -461,7 +464,7 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
        2 changes or no bus; 161 of 427 schools have no stop within 500 m.
   1. Run both servers (restart both after edits: OneDrive), press "Kelantan network", let it train,
      then "Simulate peak hour".
-  2. git init + first commit (dated record for IP). The RL rewrite (section 2) is the newest invention.
+  2. [x] git init + first commit (2026-10-28, 88513f8, local only).
   3. Calibrate the knobs (trip rate, gravity beta, value of time, bus cost, background traffic) with
      real data: APAD/BAS.MY ridership, traffic counts, a household survey if UKM has one.
   4. Phase 5 follow-ups: train longer (python rl.py 480 overnight); a fixed seed for the GA/RL time limits if planners
@@ -474,3 +477,97 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
      The "Kelantan network" uses 60 routes (the limit) and still reaches only ~36% of people within 500 m;
      next levers: more key stops (limit 150) or feeder routes. With a stable master network, add a
      "keep routes stable" penalty if planners need versions that change little.
+
+=====================================================================
+9. BRAIN v2 (planned 2026-10-28; not built yet, waiting for the planner's "go")
+=====================================================================
+Why. The planner wants "the best AI public transport planning": Kelantan as dependent on public transport as Japan, not
+car-centric. Measured on the saved "Kelantan network" (v1: 382 buses, 60 routes) on 2026-10-28, the old brain optimised
+the wrong thing well:
+  - Fake long trips. Demand used only the 150 key-stop zones for the whole state and threw away trips inside a zone, so
+    63% of trips were longer than a 30-min drive (average 44 min). Real bus trips are mostly short and in town.
+  - Slow for riders: 102 min door to door on average (19 of them walking) vs 44 min driving the same roads. Direct 25%,
+    1 change 45%, 2 changes 23%, no bus 6.5%.
+  - "Best" was one RM number made of guesses (RM 100 per unserved trip, RM 10/h, RM 2.5-4 per bus-km); everyone counted
+    as riding however bad the bus; 382 buses where Kelantan really runs 64.
+  - People within 400 m (town) / 800 m (rural) of a served stop: town 45.8%, rural 27.0%, all 38.4%.
+Real anchors (public reports, found 2026-10-28):
+  - BAS.MY Kelantan (Konsortium E-Mutiara, official launch 29 Jan 2026, Bernama): 16 routes D10-D62, 64 buses (8
+    electric midi, 24 low-floor mini, 32 mini), RM 30 monthly pass; ~84,000 passengers a month in Q4 2025 (~2,800 a
+    day; one source, carz.com.my). Route list with termini and main stops, no road paths:
+    en.wikipedia.org/wiki/List_of_BAS.MY_bus_routes.
+  - Japan (MLIT, 2014): 5.8% of people live over 500 m from a bus stop and over 1 km from a station, so ~94% are
+    covered. MLIT's guideline: a bus stop within 300-500 m, a station within 500-1,000 m.
+  - Kelantan's ceiling for big buses (measured 2026-10-28): 60.7% of people live at >= 1,000 per km2 ("town"). Within
+    400 m (town) / 800 m (rural) of a road a big bus may stop on (trunk..tertiary): town 78.5%, rural 71.7%, all 75.8%
+    (81.7% at Japan's 500 m / 1 km). So 80-90% coverage needs vans on small roads (later), not more buses.
+
+Planner's answers (2026-10-28), the rules from here on:
+  - Judged first by thesis / paper / competition judges. Side project: no deadline, no compute budget (laptop CPU only,
+    PyTorch here has no GPU), public data only.
+  - Goal: most people riding + fairness (everyone can reach the essentials), Japan-style. Riders, most important first:
+    office workers, patients, students, elderly, people without a vehicle, foreign workers, tourists.
+  - Both a new network from zero and improving today's BAS.MY network: v2 must beat it with the same buses.
+  - Buses: start at today's 64 ("Kelantan is poor", 382 is too many), with a slider to show what more buses buy.
+  - Walking: 400 m in town, 800 m rural. Coverage as close to 80-90% as possible (see the ceiling above).
+  - More frequent buses: long waits, far stops and the heat are why people avoid the bus. Main corridors every 15 min or
+    better. Buses meet at hubs at the same minutes (timed transfers). At most 2 changes.
+  - Service 6 am - 12 am (18 h), with peak / off-peak / evening frequencies ("jimat").
+  - Routes end where a bus can turn and wait and the driver can rest. Town loops and the 90-min longest route are OK.
+  - Big buses stay on main roads. Vans (on small roads, on demand): later. Electric buses: yes. Depots: count the
+    empty runs.
+  - Rail: yes, emphatically. Buses feed KTM and ECRL stations.
+  - Must-serve places: hospitals, clinics, schools, universities, malls, markets, offices, airport, rail stations, parks,
+    recreation places, stadiums; border gateways at Rantau Panjang and the Terengganu border.
+  - Fares ignored for now. Floods later. The same inputs give the same network; the master network changes a little at
+    a time. Each route explains why it exists. Planner controls: the bus slider for now.
+  - Reset the AI: yes, keeping the old one to compare (commit 88513f8 has models/route_gnn.pt).
+  - Kelantan only for now, but no hard-coded Kelantan in new code, so another state stays a few settings away.
+
+The exam: what "better" means from now on. The planner's dream: "go to school by bus, to the mall, the stadium, the
+hospital". Every design is judged on the same simulator, the same people and the same number of buses:
+  1. Access: the share of people who can reach, by bus with at most 2 changes, door to door (walk + wait + ride + waits
+     at changes, real minutes): their nearest school within 30 min, a clinic or hospital within 45, a mall or market
+     within 45, a rail station within 45, a park or stadium within 60, their district town within 45. Per district
+     (fairness). The minutes are knobs.
+  2. Coverage: people within 400 m (town) / 800 m (rural) of a stop a bus serves.
+  3. Riders a day (from Phase 2), buses, bus-km, RM a year.
+  4. Named trips: SK Kota -> KB Mall, SK Kota -> AEON Mall, Wakaf Che Yeh -> HRPZ II.
+  5. Shape: routes over 1.5x their quickest drive; every route ends at a rest place.
+  6. Benchmarks: Mandl (have) and Mumford's 4 cities (small public files), standard UTRP evaluation, vs published results.
+"Beats BAS.MY" = more people pass 1 and 2, and more riders, with the same 64 buses. Before its rider numbers are trusted,
+the rider model must reproduce BAS.MY's ~2,800 riders a day on BAS.MY's own 16 routes.
+
+Phases, biggest win first. Each ends with the exam before vs after. The GA tests each rule change (it needs no
+training); the AI retrains once, in Phase 5, when the rules have settled, so no overnight training is wasted.
+  0. Exam. engine/exam.py runs the exam above. BAS.MY's 16 routes entered as locked routes (termini and main stops from
+     the route list; road paths from the bas.my maps or OpenStreetMap bus routes, if mapped). Restores the OSM extract
+     (cache/malaysia.osm.pbf from Geofabrik, ~300 MB; deleted 2026-10-18 to the Recycle Bin: restore it from there if
+     still in it, else download). Starting line: BAS.MY today (64 buses) and v1 (382).
+  1. Who travels where. Demand rebuilt: ~2,000 small zones and short trips kept (a trip inside one key stop's area is a
+     walk or a local hop, no longer pushed across the state); trips by purpose (school, work, hospital, shopping,
+     recreation, rail, border), each with its own pull (pupils, beds, floor area, ...) and time of day (morning peak,
+     day, evening peak, night). New places from OSM: rail stations, parks, stadiums, offices, factories.
+  2. Riders react, new goal. Each trip compares the bus (walking and waiting count double in the heat, 10 min per
+     change) with a motorbike or car; people without a vehicle ride more readily. The one unknown (how much people
+     prefer their motorbike) is set so BAS.MY's 16 routes carry ~2,800 a day. Score: riders + people passing the access
+     exam, for the given buses. RM 100 per unserved trip and RM 10/h go. The riders-vs-coverage weight is picked by the
+     planner, by eye, from a measured trade-off curve on 64 buses.
+  3. Frequency and fleet. Buses are a budget (slider, default 64). Each route's buses per period follow its riders
+     (square-root rule scaled to the budget), never below a minimum service and never over-full. Clock-face headways
+     (10/15/20/30/60 min) so buses can meet. Timed transfers at hubs (bus terminals, rail stations, stops where many
+     routes meet): a change there waits ~5 min, not half the headway. Routes end only at rest places (terminal, rail
+     station, roundabout, big car park), with a layover for the driver. Empty runs from depots. Electric buses: range
+     per charge, charging at layovers.
+  4. Explanations and stability. Each route says why it exists (riders, the trips it makes direct, who loses what
+     without it) and its role (trunk: a bus every 15 min or better / feeder / coverage). The master network keeps a
+     route unless changing it gains enough.
+  5. Reset the AI. Same kind of brain (graph network + REINFORCE + active search, RL + GA: it beat the GA by 9% in
+     October), retrained from zero on the new world: the bus budget as an input (one brain for any number of buses =
+     the slider), route ends masked to rest places, new stop features (rail, hub, rest place). Laptop: 2 workers,
+     BelowNormal, overnight runs. v1 kept as models/route_gnn_v1.pt for comparison.
+  6. Proof. The exam on BAS.MY today vs LAJU v2 at 64 buses, then at 100 / 150 / 200; Mandl and Mumford vs the
+     published results; a printable report for the judges.
+Later, not now: on-demand vans and vans on small roads (the ~24% of people big buses cannot reach: the way to 90%), town
+loops if the exam shows town trips poorly served, timing buses to train timetables, fares, a flood backup network, other
+states.
