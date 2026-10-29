@@ -26,6 +26,10 @@ type Metrics = {
   buses: number[];
   express: boolean[][]; // per route, per link between key stops: skips the stops between them
   walk: number; // minutes walked to and from stops, per trip (included in att)
+  riders?: number; // score v3 (since 2026-10-29): bus trips a day, people near a served stop, the bus budget
+  boardings?: number;
+  covered?: number;
+  budget?: number;
 };
 type Sumo = {
   congestion: { path: LatLng[]; c: number }[];
@@ -60,6 +64,8 @@ type Run = {
   d0: number;
   fleet: number;
   total_km: number;
+  riders?: number | null;
+  covered?: number | null;
   trained_s: number;
   training: boolean;
 };
@@ -158,7 +164,7 @@ function Num({ label, value, onChange, min, max, step = 1 }: { label: string; va
 
 // Best cost so far over training time. A step line: the best only moves when the AI finds a better design. A rise means
 // the rules changed and re-scored the design; only the part since then compares like with like, so only that is drawn.
-function Curve({ h: all, seconds, fmt = (v) => `RM ${v.toFixed(2)} per trip`, what = "Best cost" }: { h: [number, number][]; seconds: number; fmt?: (v: number) => string; what?: string }) {
+function Curve({ h: all, seconds, fmt = (v) => `score ${v.toFixed(3)}`, what = "Best score" }: { h: [number, number][]; seconds: number; fmt?: (v: number) => string; what?: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const h = all.slice(Math.max(0, all.findLastIndex(([, s], i) => i > 0 && s > all[i - 1][1])));
   const t0 = h[0][0];
@@ -584,12 +590,12 @@ export default function Designer() {
               ))}
             </div>
             <p>
-              <b>RM {live[liveView].metrics.score.toFixed(2)} per trip</b> · no bus within 2 changes {pct(live[liveView].metrics.unserved)} · direct{" "}
+              <b>score {live[liveView].metrics.score.toFixed(3)}</b> · no bus within 2 changes {pct(live[liveView].metrics.unserved)} · direct{" "}
               {pct(live[liveView].metrics.d0)} · {live[liveView].metrics.fleet} buses · {pct(live[liveView].coverage)} of people within 500 m
             </p>
             {state && (
               <p className="text-neutral-400">
-                Your {STATE_NETWORK} (green button): RM {state.score.toFixed(2)} per trip, no bus within 2 changes {pct(state.unserved)}. Its training
+                Your {STATE_NETWORK} (green button): score {state.score.toFixed(3)}, no bus within 2 changes {pct(state.unserved)}. Its training
                 takes in the AI&apos;s latest designs every 10 minutes.
               </p>
             )}
@@ -640,15 +646,24 @@ export default function Designer() {
         {tab === "result" && design && m && (
           <section className="flex flex-col gap-2 rounded border border-neutral-800 p-3">
             <h2 className="font-semibold">{runs.find((r) => r.id === design.id)?.name || "Result"} · {when(design.id)}</h2>
-            <p>
-              Cost: <b>RM {m.score.toFixed(2)} per trip</b> <span className="text-neutral-500">(passenger time + bus operation + unserved trips; lower is better)</span>
-            </p>
+            {m.riders !== undefined ? (
+              <p>
+                <b>{Math.round(m.riders).toLocaleString()} riders a day</b> ({Math.round(m.boardings ?? 0).toLocaleString()} boardings) ·{" "}
+                <b>{Math.round(m.covered ?? 0).toLocaleString()}</b> people near a stop with a bus · {m.budget} buses to share{" "}
+                <span className="text-neutral-500">(score {m.score.toFixed(3)}: lower is better)</span>
+              </p>
+            ) : (
+              <p>
+                Cost: <b>RM {m.score.toFixed(2)} per trip</b> <span className="text-neutral-500">(passenger time + bus operation + unserved trips; lower is better)</span>
+              </p>
+            )}
             <p>
               Average trip <b>{m.att.toFixed(1)} min</b> incl. {m.walk.toFixed(1)} min walking, waiting · direct <b>{pct(m.d0)}</b> · 1 transfer {pct(m.d1)} · 2 transfers {pct(m.d2)} · no bus within 2 changes <b>{pct(m.dun)}</b>
             </p>
             <p>
               <b>{pct(design.coverage)}</b> of {Math.round(design.people).toLocaleString()} people live within 500 m of a stop ·{" "}
-              {Math.round(design.trips).toLocaleString()} bus trips/day modelled (DOSM {design.dosm_year} population)
+              {Math.round(design.trips).toLocaleString()} {m.riders !== undefined ? "trips/day between stops, all modes" : "bus trips/day"} modelled
+              (DOSM {design.dosm_year} population)
             </p>
             <p>
               <b>{m.fleet} buses</b>{" "}
@@ -835,7 +850,7 @@ export default function Designer() {
                   onChange={(e) => setCompare(e.target.checked ? [...compare, r.id].slice(-2) : compare.filter((x) => x !== r.id))}
                 />
                 <span className="min-w-0 flex-1 truncate">
-                  {r.name || when(r.id)} · {OPTIMIZERS[r.optimizer] ?? r.optimizer} · RM {r.score.toFixed(2)}
+                  {r.name || when(r.id)} · {OPTIMIZERS[r.optimizer] ?? r.optimizer} · score {r.score.toFixed(3)}
                 </span>
                 {(r.training || r.trained_s > 0) && (
                   <span className="shrink-0 text-neutral-400">{r.training ? "training…" : `trained ${dur(r.trained_s)}`}</span>
@@ -860,7 +875,9 @@ export default function Designer() {
                 <tbody>
                   {(
                     [
-                      ["Cost RM/trip", (r: Run) => r.score.toFixed(2)],
+                      ["Score (lower is better)", (r: Run) => r.score.toFixed(3)],
+                      ["Riders a day", (r: Run) => (r.riders == null ? "-" : Math.round(r.riders).toLocaleString())],
+                      ["People near a stop", (r: Run) => (r.covered == null ? "-" : Math.round(r.covered).toLocaleString())],
                       ["Avg trip (min)", (r: Run) => r.att.toFixed(1)],
                       ["Direct trips", (r: Run) => pct(r.d0)],
                       ["No bus within 2 changes", (r: Run) => pct(r.unserved)],

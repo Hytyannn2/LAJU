@@ -1,6 +1,6 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-29 (brain v2 in section 9: Phase 0 the exam, Phase 1 who travels where; git repository since
+Last updated: 2026-10-29 (brain v2 in section 9: Phase 0 the exam, 1 who travels where, 2 riders choose; git repo since
 2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
 minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
 in the AI's designs, live AI map, click a stop for its routes: sections 2, 4, 5, 7, 8)
@@ -60,7 +60,17 @@ How the AI places stops and builds the network (kelantan.build):
      (kelantan.NEAR_HOME). Summed between the key stops in view: a trip inside one key stop's area is local.
      kelantan.BUS_SHARE (2.3%) of them is the bus's potential until Phase 2. (Before: residents made 0.05 bus trips a
      day, spread over the other key stops by attraction x exp(-0.05 x min).)
-Score v2 (sim.py) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
+Score v3 (sim._v3; Kelantan since 2026-10-29, brain v2 Phase 2): riders choose. Every trip between key stops compares
+  the bus (waits x 2, walks x 2, 10 min per change, plus kelantan.BUS_ASC = 315 felt min) with a motorbike or car (0.8x the
+  bus's road minutes + 2 min each end), or, for people without one (kelantan.CAPTIVE, by purpose), a lift that feels
+  120 min worse (sim.LIFT_MIN), by a logit (sim.THETA = 0.015 per felt minute). BUS_ASC makes BAS.MY's own 16 routes at
+  their timetable carry the 2,800 boardings a day BAS.MY reports. The routes share the planner's buses (max_buses, else
+  kelantan.BUSES = 64) in whole buses: each route what its minimum service needs, every further bus where it cuts most
+  waiting (sim._share, square-root rule); two rounds (minimum service, then the shared-out buses). Score = 1000 /
+  (riders + kelantan.COVER_WEIGHT x people within 400 m town / 800 m rural of a stop with a bus), x the buses the minimum
+  services need beyond the budget, routes over the time cap and crooked minutes; lower is better. COVER_WEIGHT 0.03 =
+  "coverage first", the planner's pick. RM 100 per unserved trip, RM 10/h and RM per bus-km are gone from it.
+Score v2 (sim.py; Mandl and the synthetic RL cities still use it) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
   10 min since 2026-10-10, Mandl 5) + bus-km x RM per bus-km of the route's category + RM 100 per unserved trip (50 until
   2026-10-18; a trip needing 3+ changes counts as unserved since 2026-10-18, kelantan.MAX_TRANSFERS)) / trips.
   Budgets (max buses, max km), routes over the time cap and crooked routes (over 1.5x the quickest drive between their
@@ -439,8 +449,8 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
 =====================================================================
 8. NEXT SESSION - START HERE
 =====================================================================
-  START HERE (2026-10-29): section 9, the brain v2 plan. Phases 0 (the exam) and 1 (who travels where) are done; next is
-  Phase 2 once the planner says go. Items 0-5 below are the v1 state it starts from.
+  START HERE (2026-10-29): section 9, the brain v2 plan. Phases 0 (the exam), 1 (who travels where) and 2 (riders
+  choose, score v3) are done; next is Phase 3 once the planner says go. Items 0-5 below are the v1 state it starts from.
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
@@ -487,7 +497,7 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
      "keep routes stable" penalty if planners need versions that change little.
 
 =====================================================================
-9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phase 1 on 2026-10-29, Phase 2 next)
+9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phases 1 and 2 on 2026-10-29, Phase 3 next)
 =====================================================================
 Why. The planner wants "the best AI public transport planning": Kelantan as dependent on public transport as Japan, not
 car-centric. Measured on the saved "Kelantan network" (v1: 382 buses, 60 routes) on 2026-10-28, the old brain optimised
@@ -608,11 +618,37 @@ training); the AI retrains once, in Phase 5, when the rules have settled, so no 
      exam's own list did, so the park test rose 2-4 points for every network (BAS.MY today 30% -> 34%). BAS.MY's run now
      pins its key stops (input.spots): since Phase 1, 692 stops and 52 buses (were 706 / 53), average access still 26%.
      Before Phase 5: delete cache/rl_cities.pkl (the RL's training maps still carry the old trips).
-  2. Riders react, new goal. Each trip compares the bus (walking and waiting count double in the heat, 10 min per
-     change) with a motorbike or car; people without a vehicle ride more readily. The one unknown (how much people
-     prefer their motorbike) is set so BAS.MY's 16 routes carry ~2,800 a day. Score: riders + people passing the access
-     exam, for the given buses. RM 100 per unserved trip and RM 10/h go. The riders-vs-coverage weight is picked by the
-     planner, by eye, from a measured trade-off curve on 64 buses.
+  2. Riders react, new goal [x] (2026-10-29). Score v3 (section 2). kelantan.demand also returns the trips of people
+     without a vehicle (CAPTIVE); build() gives the Problem every person trip between key stops (od), that part
+     (od_captive), motorbike / car minutes (drive), the bus budget (max_buses, else BUSES = 64) and coverage cells (homes
+     with the same stops within 400 / 800 m). "People passing the access exam" became people near a stop with a bus: the
+     exam's door-to-door access per home is too slow for every design check.
+     BAS.MY's real routes and timetables from bas.my's route pictures (cache/basmy_maps, 16 PNGs; the planner sent D10):
+     D61 and D62 run 3 times a day each way (were assumed every 90 / 120 min); most routes 06:30-18:30; D10, D20, D31,
+     D50, D52, D61 re-traced; basmy.json keeps the departures a day ("trips"). BAS.MY today now: 723 stops (BAS.MY: 718),
+     47 buses at once, 15,330 bus-km a day, 31% of people near a stop, access 27%. BUS_ASC = 315 felt min gives its
+     routes at their timetable 2,800 boardings a day (2,374 riders).
+     Trade-off, GA 5 min, 16 routes, 64 buses, the saved network's 150 key stops (cover weight: riders a day, people near
+     a stop, exam average): 0: 6,316, 379k, 28%; 0.01: 4,932, 469k, 27%; 0.03: 4,722, 540k, 32% (these counted fractions
+     of a bus per route, 73 on the road; whole buses since, sim._share). The planner's pick: 0.03, coverage first.
+     Coverage first at exactly 64 whole buses vs BAS.MY today (owns 64, runs 47 at once):
+                                          BAS.MY today        LAJU v2, GA 5 min
+       riders a day (boardings)           2,374 (2,800)       3,618 (4,284)
+       people near a stop (exam)          31%                 27%
+       average of the 6 access tests      27%                 32%
+       clinic or hospital, 45 min         34%                 43%
+       mall or market, 45 min             18%                 33%
+       planner's 3 test trips             all by bus          none within 2 changes
+       both ends at a rest place          7 of 16             0 of 16
+     -> after 5 minutes of design: more riders and better access with the same buses, but fewer people near a stop, no
+     route ending where a bus can wait, and the Kota Bharu test trips unserved (BAS.MY's 16 routes all start at the
+     Kota Bharu bus station; the GA spreads its 16 over the state). Phase 3 (route ends, timed transfers) and Phase 5
+     (the AI retrained on this score) are for those.
+     Website: Result shows riders a day, people near a stop and the buses to share; Saved compares riders and people
+     near a stop too; "score" replaces "RM per trip" (lower is better). The saved "Kelantan network" (60 routes, 382
+     buses) now scores against 64 buses: do not Train it until its routes or budget change.
+     Known: a design check takes ~0.1 s for 60 routes (two rounds of paths, was ~0.05 s); riders the second round's
+     frequencies win do not share the buses out again.
   3. Frequency and fleet. Buses are a budget (slider, default 64). Each route's buses per period follow its riders
      (square-root rule scaled to the budget), never below a minimum service and never over-full. Clock-face headways
      (10/15/20/30/60 min) so buses can meet. Timed transfers at hubs (bus terminals, rail stations, stops where many

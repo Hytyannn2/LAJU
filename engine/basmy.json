@@ -1,5 +1,5 @@
 {
- "about": "BAS.MY Kelantan (Konsortium E-Mutiara), 2026-10-28. Routes, headways, one-way minutes and stop counts from the Transit app route pages (transitapp.com/en/region/kelantan/bas.my-kota-bharu); D61's headway (90) and all of D62 (Wikipedia's list of BAS.MY routes; not on Transit) are assumptions. Stops: landmarks of each route, in order, placed by their OpenStreetMap names; LAJU joins them by the quickest road. D51 and D52 continue into Terengganu: only their Kelantan part is here. The official GTFS (api.data.gov.my/gtfs-static/mybas-kota-bharu) was empty.",
+ "about": "BAS.MY Kelantan (Konsortium E-Mutiara). Timetables (departures a day each way, every day) and route maps from bas.my's route pages (bas.my/route/D10.png ... D62.png, read 2026-10-29); one-way minutes and stop counts from the Transit app (transitapp.com/en/region/kelantan/bas.my-kota-bharu, 2026-10-28; none for D62). Stops: landmarks along each route in order, placed by their OpenStreetMap names; LAJU joins them by the quickest road, so a bus that turns into a kampung road runs on the nearest main road here. D51 and D52 continue into Terengganu: only their Kelantan part is here. The official GTFS (api.data.gov.my/gtfs-static/mybas-kota-bharu) was empty.",
  "routes": [
   {
    "ref": "D10",
@@ -9,14 +9,19 @@
    "transit_stops": 34,
    "stops": [
     [
-     "Rumah Seri Kenangan Taman Kemumin",
-     6.157278,
-     102.291257
+     "Stesen Bas Kota Bharu",
+     6.128148,
+     102.239556
     ],
     [
-     "MRSM Pengkalan Chepa",
-     6.157163,
-     102.295263
+     "Universiti Malaysia Kelantan Kampus Kota",
+     6.164502,
+     102.282965
+    ],
+    [
+     "Nasi Ulam Cikgu, Taman Orkid",
+     6.141014,
+     102.297563
     ],
     [
      "Institut Pendidikan Guru (IPG) Kampus Kota Bharu",
@@ -24,16 +29,12 @@
      102.296112
     ],
     [
-     "SK Padang Garong",
-     6.125733,
-     102.241311
-    ],
-    [
-     "Stesen Bas Kota Bharu",
-     6.128148,
-     102.239556
+     "Rumah Seri Kenangan Taman Kemumin",
+     6.157278,
+     102.291257
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D11",
@@ -82,7 +83,8 @@
      6.128148,
      102.239556
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D12",
@@ -116,7 +118,8 @@
      6.128148,
      102.239556
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D13",
@@ -170,7 +173,8 @@
      6.128148,
      102.239556
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D20",
@@ -193,6 +197,11 @@
      "Kampung Telaga Bata",
      6.173985,
      102.128767
+    ],
+    [
+     "Pasar Besar Chabang Empat",
+     6.153673,
+     102.157097
     ],
     [
      "SK Kubang Batang",
@@ -219,7 +228,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D21",
@@ -263,7 +273,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D30",
@@ -307,7 +318,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D31",
@@ -317,34 +329,29 @@
    "transit_stops": 77,
    "stops": [
     [
-     "Sekolah Menengah Kebangsaan Pasir Mas",
-     6.047171,
-     102.140454
+     "Sekolah Jenis Kebangsaan (Cina) Yok Eng",
+     6.039666,
+     102.14123
     ],
     [
-     "Sekolah Menengah Kebangsaan Meranti",
-     6.10136,
-     102.105119
+     "Surau Babo, Lorong Haji Abdul Rashid, Kampung Banggol Chicha, 17000, Pasir Mas, Kelantan",
+     6.05414,
+     102.112864
     ],
     [
-     "Bunut Susu",
-     6.094503,
-     102.174448
+     "Meranti",
+     6.100037,
+     102.106141
     ],
     [
-     "Kolej Vokasional Pasir Mas",
-     6.080789,
-     102.189688
+     "Kampung Bechah Semak",
+     6.106997,
+     102.156833
     ],
     [
      "Sekolah Menengah Kebangsaan Tendong",
      6.067904,
      102.207972
-    ],
-    [
-     "Sekolah Kebangsaan Othman Talib (1)",
-     6.067004,
-     102.207087
     ],
     [
      "SK Pasir Pekan",
@@ -361,7 +368,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D32",
@@ -410,7 +418,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 25
   },
   {
    "ref": "D40",
@@ -509,7 +518,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D50",
@@ -519,34 +529,9 @@
    "transit_stops": 47,
    "stops": [
     [
-     "SMK Bachok",
-     6.051018,
-     102.394296
-    ],
-    [
-     "Sekolah Kebangsaan Badak",
-     6.020379,
-     102.401712
-    ],
-    [
-     "SK Tangok",
-     6.012751,
-     102.394925
-    ],
-    [
-     "Jelawat",
-     6.012144,
-     102.376438
-    ],
-    [
-     "Bukit Marak",
-     6.038763,
-     102.321097
-    ],
-    [
-     "SMK Kubang Kerian",
-     6.092465,
-     102.277213
+     "Stesen Bas Kota Bharu",
+     6.128148,
+     102.239556
     ],
     [
      "Hospital Universiti Sains Malaysia",
@@ -554,21 +539,27 @@
      102.280483
     ],
     [
-     "Sekolah Kebangsaan Langgar",
-     6.114216,
-     102.249794
+     "Pasir Tumboh",
+     6.057192,
+     102.281116
     ],
     [
-     "KB Mall",
-     6.118399,
-     102.241852
+     "Bukit Marak",
+     6.038763,
+     102.321097
     ],
     [
-     "Stesen Bas Kota Bharu",
-     6.127974,
-     102.239262
+     "SMK Bachok",
+     6.051018,
+     102.394296
+    ],
+    [
+     "Universiti Malaysia Kelantan Kampus Bachok",
+     5.996822,
+     102.403709
     ]
-   ]
+   ],
+   "trips": 13
   },
   {
    "ref": "D51",
@@ -622,7 +613,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 12
   },
   {
    "ref": "D52",
@@ -632,9 +624,19 @@
    "transit_stops": 86,
    "stops": [
     [
-     "Tok Bali",
-     5.895496,
-     102.477905
+     "Stesen Bas Kota Bharu",
+     6.128148,
+     102.239556
+    ],
+    [
+     "Hospital Universiti Sains Malaysia",
+     6.099646,
+     102.280483
+    ],
+    [
+     "Bukit Marak",
+     6.038763,
+     102.321097
     ],
     [
      "Kampung Dalam Rhu",
@@ -642,26 +644,17 @@
      102.521709
     ],
     [
-     "Kampung Repek",
-     6.013894,
-     102.414272
+     "Tok Bali",
+     5.895496,
+     102.477905
     ],
     [
-     "Jelawat",
-     6.012144,
-     102.376438
-    ],
-    [
-     "SMK Bachok",
-     6.051018,
-     102.394296
-    ],
-    [
-     "Stesen Bas Kota Bharu",
-     6.128148,
-     102.239556
+     "Cherang Ruku",
+     5.865812,
+     102.486627
     ]
-   ]
+   ],
+   "trips": 8
   },
   {
    "ref": "D60",
@@ -725,39 +718,25 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 7
   },
   {
    "ref": "D61",
    "name": "Kota Bharu - UiTM Machang",
-   "headway": 90,
+   "headway": 240,
    "minutes": 149,
    "transit_stops": 117,
    "stops": [
     [
      "Stesen Bas Kota Bharu",
-     6.127974,
-     102.239262
+     6.128148,
+     102.239556
     ],
     [
-     "KB Mall",
-     6.117549,
-     102.241033
-    ],
-    [
-     "Wakaf Che Yeh",
-     6.08436,
-     102.238398
-    ],
-    [
-     "Kubur Kampung Tunjong",
-     6.052741,
-     102.238672
-    ],
-    [
-     "Nilam Puri",
-     6.026361,
-     102.240855
+     "Bukit Marak",
+     6.038763,
+     102.321097
     ],
     [
      "Sekolah Menengah Kebangsaan Agama Melor",
@@ -770,24 +749,14 @@
      102.249295
     ],
     [
-     "Sekolah Kebangsaan Kok Lanas",
-     5.911457,
-     102.246396
-    ],
-    [
-     "Kolej Matrikulasi Kelantan",
-     5.927234,
-     102.286256
+     "Politeknik Kota Bharu",
+     5.922818,
+     102.233845
     ],
     [
      "Pulai Chondong",
      5.872121,
      102.229198
-    ],
-    [
-     "Klinik Kesihatan Labok",
-     5.830743,
-     102.225036
     ],
     [
      "Stesen Bas Machang",
@@ -804,12 +773,13 @@
      5.760904,
      102.273624
     ]
-   ]
+   ],
+   "trips": 3
   },
   {
    "ref": "D62",
    "name": "Kota Bharu - Gua Musang",
-   "headway": 120,
+   "headway": 270,
    "minutes": null,
    "transit_stops": null,
    "stops": [
@@ -843,7 +813,8 @@
      6.127974,
      102.239262
     ]
-   ]
+   ],
+   "trips": 3
   }
  ]
 }

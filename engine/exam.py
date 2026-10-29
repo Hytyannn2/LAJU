@@ -51,8 +51,7 @@ TRIPS = (  # the planner's test trips (2026-10-10 / 18): (from, lat, lng), (to, 
     (("SK Kota", 6.085193, 102.233006), ("AEON Mall Kota Bharu", 6.110255, 102.230746)),
     (("Wakaf Che Yeh", 6.08436, 102.238398), ("HRPZ II", 6.124773, 102.245687)),
 )
-TOWN_PER_KM2 = 1000   # a home in a population hexagon this dense is "town"
-STOP_M = (400, 800)   # town, rural: how near a stop counts as covered (planner, 2026-10-28)
+TOWN_PER_KM2, STOP_M = kelantan.TOWN_PER_KM2, kelantan.STOP_M  # town / rural, and the walk that counts as covered
 REST = ("bus_station", "rail", "mall", "hospital", "university", "college", "stadium")  # a bus can wait there
 REST_M = 300
 MAX_CHANGES = 2
@@ -162,14 +161,14 @@ def _pairs(A, B, metres=REACH_M):
     return i, j, _walk(np.hypot(*(A[i] - B[j]).T)) if len(i) else np.zeros(0)
 
 
-def exam(p, net, rs, heads, express=None, minutes=None):
-    """The exam of route set rs (key-stop indices), route i running every heads[i] minutes and, where minutes[i] is
-    given (a real timetable), taking that long one way. -> dict (see report)."""
+def exam(p, net, rs, heads, express=None, timetable=None):
+    """The exam of route set rs (key-stop indices), route i running every heads[i] minutes and, where its real
+    timetable[i] gives them, taking "minutes" one way and running "trips" a day each way. -> dict (see report)."""
     R = kelantan.roads()
     v, seqs, fwd, bwd = expand(p, net, rs, express)
-    for i, mm in enumerate(minutes or []):
-        if mm:  # traced routes keep their roads but run at their real speed (their tracing adds U-turns: straight())
-            fwd[i], bwd[i] = fwd[i] * mm / fwd[i].sum(), bwd[i] * mm / bwd[i].sum()
+    for i, t in enumerate(timetable or []):
+        if t.get("minutes"):  # traced routes keep their roads but run at their real speed (tracing adds U-turns: straight())
+            fwd[i], bwd[i] = fwd[i] * t["minutes"] / fwd[i].sum(), bwd[i] * t["minutes"] / bwd[i].sum()
     SP, S = R["P"][v], len(v)
     T, C = transit(seqs, fwd, bwd, heads, S)
     P, ppl, town, district = homes()
@@ -214,8 +213,10 @@ def exam(p, net, rs, heads, express=None, minutes=None):
     rest = cKDTree(np.vstack([tg[k] for k in REST if k in tg]))
     ends = R["P"][net["nodes"][[x for r in rs for x in (r[0], r[-1])]]]
     out["rest_ends"] = int((rest.query(ends)[0].reshape(-1, 2) <= REST_M).all(1).sum())
-    out["buses"] = sum(math.ceil((f.sum() + b.sum() + LAYOVER_MIN) / h) for f, b, h in zip(fwd, bwd, heads))
-    out["bus_km_day"] = sum(2 * k * SERVICE_H * 60 / h for k, h in zip(m["route_km"], heads))
+    out["buses"] = sum(math.ceil((f.sum() + b.sum() + LAYOVER_MIN) / h - 0.05)  # headways are saved to 0.1 min
+                       for f, b, h in zip(fwd, bwd, heads))
+    trips = [t.get("trips") for t in timetable] if timetable else [None] * len(rs)
+    out["bus_km_day"] = sum(2 * k * (n or SERVICE_H * 60 / h) for k, h, n in zip(m["route_km"], heads, trips))
     out["route_minutes"] = [round(float(f.sum())) for f in fwd]
     out |= {"routes": len(rs), "stops": S}
     return out
@@ -232,7 +233,7 @@ def straight(p, r):
 
 
 def load(name):
-    """(Problem, net, routes, headways, express, timetable minutes) of the newest saved run named `name`. A network is
+    """(Problem, net, routes, headways, express, timetable) of the newest saved run named `name`. A network is
     judged at the headways it was saved with, so a later change of the trip model or the rules does not change its
     exam; if its routes no longer match those (a stop it used is gone), at what sim.evaluate runs today."""
     import server
@@ -245,7 +246,7 @@ def load(name):
     rs = lk + server._routes(d, p, net, lk)
     if "timetable" in d:  # BAS.MY: its own headways and trip times, and every bus stops at every stop
         t = d["timetable"]
-        return p, net, [straight(p, r) for r in rs], [x["headway"] for x in t], None, [x["minutes"] for x in t]
+        return p, net, [straight(p, r) for r in rs], [x["headway"] for x in t], None, t
     m = d["output"]["metrics"]
     if len(m["headway"]) != len(rs) or len(m["express"]) != len(rs):
         m = evaluate(p, rs, detail=True)
@@ -254,7 +255,7 @@ def load(name):
 
 def save_basmy():
     """BAS.MY Kelantan (basmy.json) as the saved run "BAS.MY today": every route locked through its stops, so the website
-    draws it and the exam reads its timetable. The website's own numbers for it use sim.py's frequencies."""
+    draws it and the exam reads its timetable; its riders are counted at that timetable too."""
     import server
 
     b = json.loads(BASMY.read_text())["routes"]
@@ -266,8 +267,9 @@ def save_basmy():
     f = next((f for f in server.RESULTS.glob("run-*.json") if json.loads(f.read_text())["input"]["name"] == req.name),
              server.RESULTS / f"run-{datetime.now():%Y%m%d-%H%M%S-%f}.json")  # replaces the last one
     out = server._output(p, net, [straight(p, r) for r in lk], req)
+    out["metrics"] = evaluate(p, [straight(p, r) for r in lk], detail=True, fixed=[r["headway"] for r in b])  # its timetable
     server._save(f, {"input": req.model_dump(), "output": out,
-                     "timetable": [{k: r[k] for k in ("ref", "headway", "minutes")} for r in b]})
+                     "timetable": [{k: r[k] for k in ("ref", "headway", "minutes", "trips")} for r in b]})
     print("saved", f.stem, "BAS.MY today:", len(lk), "routes")
 
 

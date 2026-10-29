@@ -163,7 +163,8 @@ def runs():
                     "routes": len(d["output"]["routes"]), "stops": len(d["output"]["stops"]),
                     "coverage": d["output"]["coverage"], "trained_s": d.get("train", {}).get("seconds", 0),
                     "training": f.stem in jobs and jobs[f.stem]["thread"].is_alive()}
-                   | {k: m[k] for k in ("score", "att", "unserved", "d0", "fleet", "total_km")})
+                   | {k: m[k] for k in ("score", "att", "unserved", "d0", "fleet", "total_km")}
+                   | {k: m.get(k) for k in ("riders", "covered")})  # score v3 runs only
     return out
 
 
