@@ -57,8 +57,6 @@ WALK_CAP_MIN = 15  # farther (~900 m), people ride a motorbike or get dropped at
 WALK_WEIGHT = 2.0  # a walking minute costs two riding minutes (heat, effort; transport studies use 1.5-2.5)
 SPACING_M = ((2000, 400), (300, 800), (0, 1500))  # (people within PEOPLE_NEAR_M >=, metres since last stop)
 MIN_PEOPLE = 50    # no intermediate stop where (almost) nobody lives
-TRIP_RATE = 0.05   # bus trips per resident per day: potential demand, not today's ridership
-BETA = 0.05        # gravity model: trips fall off as exp(-BETA * minutes)
 VOT_RM_H = 10.0    # value of passenger time per hour (bus costs per category: sim.CATEGORIES)
 UNSERVED_RM = 100.0  # per trip left unserved: high on purpose, serving the area is the goal (a soft constraint). At 50
                      # the score tied a state network leaving 20.3% of trips without a bus with one leaving 8.5% (2026-10-18)
@@ -68,9 +66,10 @@ TRANSFER_MIN = 10  # a change of bus feels like 10 riding minutes on top of the 
                    # uses 5). At 5 the AI spread routes thin and sent riders to busy places by changing (2026-10-10)
 MAX_TRANSFERS = 2  # a trip needing more changes counts as unserved: riders would not make it (planner, 2026-10-18; it was
                    # served, and 12-21% of the state network's trips needed 3+ changes)
-PLACES = {  # daily trips attracted per place: planning assumptions, replace with surveys
+PLACES = {  # daily trips a place pulls, against the others of its purpose (KINDS): planning assumptions, replace with surveys
     "university": 4000, "college": 800, "hospital": 2500, "clinic": 200, "school": 400,
     "marketplace": 1500, "mall": 2500, "supermarket": 400, "bus_station": 1500,
+    "rail": 200, "airport": 4000, "park": 300, "stadium": 500, "beach": 1500, "office": 100,  # since 2026-10-29
 }
 # Real sizes where official data exists: a hospital attracts trips by its district's public beds (MOH), a school by its
 # district's pupils (KPM), shared by the district's hospitals / schools in OSM. The rates keep the old totals
@@ -81,8 +80,43 @@ TRIPS_PER_PUPIL = 0.57
 # the state's biggest, counted as much as a small bazaar). The rates keep each kind's old total over the places OSM
 # sizes; one without a mapped building keeps PLACES. ponytail: footprint, not floor area (building:levels is on 1 in 6
 # retail buildings in OSM); multiply by levels once OSM has them.
-TRIPS_PER_M2 = {"mall": 0.24, "supermarket": 0.13, "marketplace": 0.75}
+TRIPS_PER_M2 = {"mall": 0.24, "supermarket": 0.13, "marketplace": 0.75, "office": 1.0}  # office: 1 job per 10 m2
 ALIASES = {"pasir putih": "pasir puteh", "lojing": "gua musang"}  # KPM spelling; OSM's Lojing district is in Gua Musang
+
+# Who travels where (brain v2 Phase 1, 2026-10-29): person trips by every mode, by purpose. Each resident makes `rate`
+# out trips a day for a purpose (home -> activity, back the same day), drawn to the places that pull that purpose (KINDS,
+# by their "trips") by size and by road minutes (gravity, exp(-beta x minutes)), beta fitted so the purpose's mean trip
+# takes `minutes`. Before, one beta spread every trip over the 150 key stops of the whole state and no trip could stay
+# inside a key stop's area: 63% took over a 30-min drive (2026-10-28). The shares of out and back trips in each period
+# of the day (PERIODS) are for Phase 3's frequencies. All planning assumptions until a household survey exists.
+PERIODS = ("6-9 morning peak", "9-16 day", "16-19 evening peak", "19-24 night")
+PURPOSES = {  # name: (out trips a day per resident, mean minutes, out shares per period, back shares per period)
+    "work": (None, 20, (0.75, 0.20, 0.05, 0.0), (0.0, 0.15, 0.65, 0.20)),      # rate: WORKERS
+    "school": (None, 10, (0.95, 0.05, 0.0, 0.0), (0.0, 0.60, 0.40, 0.0)),      # rate: KPM's pupils in the district
+    "study": (0.02, 25, (0.70, 0.30, 0.0, 0.0), (0.0, 0.40, 0.50, 0.10)),      # universities and colleges
+    "health": (0.03, 20, (0.45, 0.50, 0.05, 0.0), (0.05, 0.75, 0.15, 0.05)),
+    "shop": (0.25, 15, (0.10, 0.45, 0.20, 0.25), (0.05, 0.40, 0.25, 0.30)),
+    "leisure": (0.08, 20, (0.10, 0.20, 0.45, 0.25), (0.0, 0.15, 0.35, 0.50)),  # parks, stadiums, beaches
+    "travel": (0.02, 25, (0.30, 0.40, 0.20, 0.10), (0.20, 0.40, 0.25, 0.15)),  # bus and rail stations, airport, border
+    "other": (0.50, 12, (0.15, 0.40, 0.25, 0.20), (0.05, 0.35, 0.30, 0.30)),   # visiting, mosque, errands: to homes
+}
+KINDS = {"school": "school", "university": "study", "college": "study", "hospital": "health", "clinic": "health",
+         "mall": "shop", "supermarket": "shop", "marketplace": "shop", "park": "leisure", "stadium": "leisure",
+         "beach": "leisure", "bus_station": "travel", "rail": "travel", "airport": "travel", "gateway": "travel"}
+WORKERS = 0.35       # people with a job per resident
+NEAR_HOME = {"work": 0.4, "shop": 0.5, "leisure": 0.5, "other": 1.0}  # share of a purpose's pull spread like the people,
+# which OSM does not map: farms, fishing, trades, home shops, kedai runcit, padang and futsal courts, the neighbours.
+# Without it the state's 120 mapped shops took every shopping trip (Pasar Besar Tanah Merah 29,000 visits a day, twice
+# Siti Khadijah) and its 57 parks, stadiums and beaches every outing (Taman Tasik Krai 9,500): 2026-10-29
+JOBS_PER_TRIP = 0.1  # jobs at a place per trip a day it pulls (a mall drawing 1,000 a day employs 100); offices: jobs only
+M2_PER_JOB = {"commercial": 40, "retail": 40, "industrial": 100}  # building footprint per job on OSM's land use
+GATEWAYS = {  # border crossings: (lat, lng of the town beyond, trips a day); they sit on the nearest Kelantan road
+    "Rantau Panjang - Sungai Golok": (6.0216, 101.9765, 3000), "Terengganu border - Jerteh": (5.7381, 102.4972, 3000)}
+ZONES = 2000         # demand zones: weighted k-means over where people live
+ACCESS_KMH = 20      # from a zone to the roads the network knows, and within a zone: small roads, motorbike or foot
+BUS_SHARE = 0.023    # the bus's potential: this share of every trip between key stops, until Phase 2 lets riders choose.
+                     # 0.023 keeps the whole state at ~95,000 a day between its 150 key stops, as before 2026-10-29: Phase 1
+                     # changes where people go, not how many would ride
 PEOPLE_NEAR_M = 485  # "people nearby" for intermediate stops: a circle as big as one population hexagon (H3, 0.74 km2)
 OSM = "https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf"
 KONTUR = "https://geodata-eu-central-1-kontur-public.s3.amazonaws.com/kontur_datasets/kontur_population_MY_20231101.gpkg.gz"
@@ -226,28 +260,47 @@ def population():
     return d["lat"], d["lng"], d["pop"], str(d["year"])
 
 
+def _kind(t, name):
+    """The kind of place (PLACES) an OSM feature's tags make it, or None. Parks count only when named (not every patch
+    of grass); stations and their stop positions both count, places() keeps one."""
+    a, s, leisure = t.get("amenity"), t.get("shop"), t.get("leisure")
+    return (a if a in PLACES else s if s in PLACES else "rail" if t.get("railway") in ("station", "halt", "stop")
+            else "airport" if t.get("aeroway") == "aerodrome" else "park" if leisure == "park" and name
+            else "stadium" if leisure in ("stadium", "sports_centre") else "beach" if t.get("natural") == "beach"
+            else "office" if t.get("office") or a == "townhall" else None)
+
+
 @lru_cache
 def places():
-    """OSM places that attract trips, each with the trips a day it attracts ("trips"): PLACES, for hospitals and
-    schools their share of their district's real beds / pupils, for shops and markets their footprint ("m2")."""
+    """OSM places that pull trips, each with the trips a day it pulls ("trips", against the others of its purpose):
+    PLACES; for hospitals and schools their share of their district's real beds / pupils; for shops, markets and offices
+    their footprint ("m2"); border crossings (GATEWAYS) on the nearest Kelantan road. A place mapped twice (a point and
+    an area, a station and its stop) counts once."""
     f = CACHE / "places.json"
     if not f.exists():
-        pts = _osm("points", "other_tags LIKE '%amenity%' OR other_tags LIKE '%shop%'")
-        areas = _osm("multipolygons", "amenity IS NOT NULL OR shop IS NOT NULL OR building IN ('retail', 'commercial', 'supermarket')")
-        tags = [_tags(t) for t in pts["other_tags"]]
-        found = [(p, nm, t.get("amenity"), t.get("shop")) for p, nm, t in zip(pts.geometry, pts["name"], tags)]
-        found += zip(areas.geometry.representative_point(), areas["name"], areas["amenity"], areas["shop"])
-        poly, rows = boundary(), []
-        for p, nm, a, s in found:
-            kind = a if a in PLACES else s
-            if kind in PLACES and poly.contains(p):
-                rows.append({"lat": p.y, "lng": p.x, "kind": kind, "name": nm if isinstance(nm, str) else ""})
-        # Footprint of the shop, market or commercial building each place sits in, the smallest if several (a shop mapped
+        pts = _osm("points", " OR ".join(f"other_tags LIKE '%{k}%'" for k in ("amenity", "shop", "railway", "leisure",
+                                                                           "natural", "office", "aeroway")))
+        areas = _osm("multipolygons", "amenity IS NOT NULL OR shop IS NOT NULL OR office IS NOT NULL OR aeroway = 'aerodrome'"
+                                      " OR leisure IN ('park', 'stadium', 'sports_centre') OR natural = 'beach'"
+                                      " OR building IN ('retail', 'commercial', 'supermarket', 'office', 'government', 'civic')")
+        keys = ("amenity", "shop", "office", "aeroway", "leisure", "natural")
+        found = [(p, nm, _tags(t)) for p, nm, t in zip(pts.geometry, pts["name"], pts["other_tags"])]
+        found += [(p, nm, {k: v for k, v in zip(keys, t) if isinstance(v, str)})
+                  for p, nm, *t in zip(areas.geometry.representative_point(), areas["name"], *(areas[k] for k in keys))]
+        poly, rows, seen = boundary(), [], defaultdict(list)
+        for p, nm, t in found:
+            nm = nm if isinstance(nm, str) else ""
+            kind, xy = _kind(t, nm), _m([p.y], [p.x])[0]
+            if kind and poly.contains(p) and not (nm and any(np.hypot(*(xy - q)) < 500 for q in seen[kind, nm])):
+                seen[kind, nm].append(xy)
+                rows.append({"lat": p.y, "lng": p.x, "kind": kind, "name": nm})
+        # Footprint of the shop, market or office building each place sits in, the smallest if several (a shop mapped
         # inside a mall gets its own); 0 where OSM maps none. Buildings only: many markets are mapped as open lots
         # (Pasar Awam Bukit Bunga's 15,000 m2 would have drawn 3x Pasar Besar Siti Khadijah).
         b = areas["building"]
         shops = areas[b.notna() & (areas["shop"].isin(TRIPS_PER_M2) | areas["amenity"].isin(TRIPS_PER_M2)
-                                   | b.isin(["retail", "commercial", "supermarket"]))].geometry.to_numpy()
+                                   | areas["office"].notna()
+                                   | b.isin(["retail", "commercial", "supermarket", "office", "government", "civic"]))].geometry.to_numpy()
         m2 = shapely.area(shapely.transform(shops, lambda c: _m(c[:, 1], c[:, 0])))
         size = np.full(len(rows), np.inf)
         i, j = shapely.STRtree(shops).query(shapely.points([(x["lng"], x["lat"]) for x in rows]), predicate="within")
@@ -256,19 +309,25 @@ def places():
             x["m2"] = round(float(s)) if np.isfinite(s) else 0
         f.write_text(json.dumps(rows))
     rows = json.loads(f.read_text())
+    R = roads()
+    for name, (lat, lng, _) in GATEWAYS.items():
+        v = cKDTree(R["P"]).query(_m([lat], [lng]))[1][0]
+        rows.append({"lat": float(R["lat"][v]), "lng": float(R["lng"][v]), "kind": "gateway", "name": name, "m2": 0})
     d = districts()
     pts = gpd.GeoDataFrame(geometry=gpd.points_from_xy([x["lng"] for x in rows], [x["lat"] for x in rows]), crs=d.crs)
     j = gpd.sjoin(pts, d, predicate="within", how="left")
     key = j[~j.index.duplicated()]["key"].fillna("").to_numpy()
     num, count = district_numbers(), Counter(zip(key, (x["kind"] for x in rows)))
     for k, x in zip(key, rows):
-        x["trips"] = float(PLACES[x["kind"]])
+        x["trips"] = float(PLACES.get(x["kind"], 0))
         if x["kind"] == "hospital":  # no public beds in its district: a private hospital or a clinic tagged as one
             x["trips"] = TRIPS_PER_BED * num["beds"][k] / count[k, "hospital"] if num["beds"].get(k) else PLACES["clinic"]
         elif x["kind"] == "school" and num["pupils"].get(k):
             x["trips"] = TRIPS_PER_PUPIL * num["pupils"][k] / count[k, "school"]
         elif x["kind"] in TRIPS_PER_M2 and x["m2"]:
             x["trips"] = TRIPS_PER_M2[x["kind"]] * x["m2"]
+        elif x["kind"] == "gateway":
+            x["trips"] = float(GATEWAYS[x["name"]][2])
     return rows
 
 
@@ -380,6 +439,105 @@ def _kmeans(X, w, k, fixed, iters=30, seed=0):
     return C
 
 
+@lru_cache
+def jobs():
+    """(metres (n, 2), jobs (n,)): buildings on OSM's commercial, retail and industrial land, by footprint (Microsoft,
+    M2_PER_JOB): the formal jobs besides the places' own staff (JOBS_PER_TRIP). Cached."""
+    f = CACHE / "jobs.npz"
+    if not f.exists():
+        lu = _osm("multipolygons", "landuse IN ('commercial', 'retail', 'industrial')")
+        lu = lu[lu.intersects(boundary())]
+        blat, blng, m2 = buildings()
+        i, j = shapely.STRtree(lu.geometry.to_numpy()).query(shapely.points(blng, blat), predicate="within")
+        i, first = np.unique(i, return_index=True)  # a building on two overlapping lots counts once
+        per = np.array([M2_PER_JOB[x] for x in lu["landuse"].to_numpy()[j[first]]])
+        np.savez_compressed(f, lat=blat[i], lng=blng[i], jobs=m2[i] / per)
+    d = np.load(f)
+    return _m(d["lat"], d["lng"]), d["jobs"]
+
+
+@lru_cache
+def zones():
+    """Demand zones for the whole state, cached: (metres (Z, 2), people (Z,), minutes between them (Z, Z)). ZONES
+    weighted k-means centres over where people live; minutes = the quickest road between their nearest road nodes plus
+    the way to those roads at ACCESS_KMH; within a zone, its people's mean distance from its centre at ACCESS_KMH."""
+    f = CACHE / "zones.npz"
+    if not f.exists():
+        blat, blng, ppl = people()
+        P = _m(blat, blng)
+        C = _kmeans(P, ppl, ZONES, np.zeros((0, 2)))
+        C = C[np.bincount(cKDTree(C).query(P)[1], ppl, minlength=len(C)) > 0]
+        z = cKDTree(C).query(P)[1]
+        pop = np.bincount(z, ppl, minlength=len(C))
+        R = roads()
+        to_road, node = cKDTree(R["P"]).query(C)
+        T = np.zeros((len(C), len(C)), np.float32)
+        for a in range(0, len(C), 100):  # 100 at a time: a whole-state matrix per source would not fit in memory
+            T[a:a + 100] = dijkstra(R["G"], indices=node[a:a + 100], limit=240)[:, node]
+        T += (to_road / 1000 / ACCESS_KMH * 60)[:, None] + (to_road / 1000 / ACCESS_KMH * 60)[None]
+        np.fill_diagonal(T, np.bincount(z, ppl * np.hypot(*(P - C[z]).T), minlength=len(C)) / pop / 1000 / ACCESS_KMH * 60)
+        np.savez_compressed(f, xy=C, pop=pop, T=T)
+    d = np.load(f)
+    return d["xy"], d["pop"], d["T"]
+
+
+def _gravity(T, prod, attr, minutes):
+    """Out trips from each zone (prod) to zones by attr x exp(-beta x T), beta fitted (bisection) so that the mean trip
+    takes `minutes`. -> (trips (Z, Z), beta)"""
+    lo, hi, t = 1e-3, 2.0, np.where(np.isfinite(T), T, 0)
+    for _ in range(30):
+        beta = float(np.sqrt(lo * hi))
+        W = attr[None] * np.exp(-beta * T)
+        out = W * (prod / np.maximum(W.sum(1), 1e-30))[:, None]
+        lo, hi = (beta, hi) if (out * t).sum() > minutes * out.sum() else (lo, beta)
+    return out, beta
+
+
+@lru_cache
+def demand():
+    """Person trips a day between demand zones (zones()), every purpose, there and back: (trips (Z, Z), {purpose: beta},
+    trip ends a day at homes per zone, at each place (places()), at each job building (jobs())). Homes count the trips
+    their people make and the trips that come to them (visits, the jobs at or near home)."""
+    zP, zpop, T = zones()
+    Z, pl = len(zP), places()
+    pz = cKDTree(zP).query(_m([x["lat"] for x in pl], [x["lng"] for x in pl]))[1]
+    pull = np.array([x["trips"] for x in pl])
+    kind = np.array([KINDS.get(x["kind"]) for x in pl], object)
+    jP, jn = jobs()
+    jz = cKDTree(zP).query(jP)[1]
+    d = districts()
+    lng, lat = zP[:, 0] / 110_800, zP[:, 1] / 110_570  # _m backwards
+    j = gpd.sjoin(gpd.GeoDataFrame(geometry=gpd.points_from_xy(lng, lat), crs=d.crs), d, predicate="within", how="left")
+    key = j[~j.index.duplicated()]["key"].fillna("").to_numpy()
+    pupils = district_numbers()["pupils"]
+    share = {k: pupils[k] / zpop[key == k].sum() for k in set(key) if k in pupils}
+    avg = sum(pupils.values()) / zpop.sum()
+    trips, beta = np.zeros((Z, Z), np.float32), {}
+    ends = np.zeros(Z), np.zeros(len(pl)), np.zeros(len(jn))  # homes, places, job buildings
+    for name, (rate, minutes, *_) in PURPOSES.items():
+        if name == "work":  # doors: (zone of each, its pull, which trip ends it gets, their index there)
+            prod = WORKERS * zpop
+            doors = [(jz, jn, 2, np.arange(len(jn))), (pz, JOBS_PER_TRIP * pull, 1, np.arange(len(pl)))]
+        else:
+            prod = np.array([share.get(k, avg) for k in key]) * zpop if name == "school" else rate * zpop
+            mine = np.flatnonzero(kind == name)
+            doors = [(pz[mine], pull[mine], 1, mine)]
+        near, total = NEAR_HOME.get(name, 0.0), sum(float(w.sum()) for _, w, _, _ in doors) or 1.0
+        doors = [(z, (1 - near) * w / total, e, i) for z, w, e, i in doors]
+        if near:
+            doors.append((np.arange(Z), near * zpop / zpop.sum(), 0, np.arange(Z)))
+        attr = np.zeros(Z)
+        for z, w, _, _ in doors:
+            np.add.at(attr, z, w)
+        out, beta[name] = _gravity(T, prod, attr, minutes)
+        trips += out + out.T
+        ends[0][:] += 2 * out.sum(1)  # out and back home
+        into = out.sum(0)
+        for z, w, e, i in doors:
+            np.add.at(ends[e], i, 2 * into[z] * w / np.maximum(attr[z], 1e-30))
+    return trips, beta, *ends
+
+
 def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0, max_km=0.0, max_route_min=0.0, spots=None):
     """Stop graph for bbox = (south, west, north, east).
 
@@ -396,21 +554,27 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
     bP, bpop = _m(blat[inb], blng[inb]), bppl[inb]
     if hpop.sum() <= 0 or bpop.sum() <= 0:
         raise ValueError("nobody lives in this area")
-    pl = [x for x in places() if s <= x["lat"] <= n and w <= x["lng"] <= e]
+    plin = np.array([s <= x["lat"] <= n and w <= x["lng"] <= e for x in places()])
+    pl = [x for x, k in zip(places(), plin) if k]
     plP = _m([x["lat"] for x in pl], [x["lng"] for x in pl])
-    plw = np.array([x["trips"] for x in pl], float)
     planner = list(forced) + [x for r in locked for x in r]
-    # Walkers: residents at their homes and each place's visitors at its door, in residents' trip ends (a resident starts
-    # TRIP_RATE trips a day and ends TRIP_RATE * qbar of them; a place ends plw * qbar, qbar = trips per unit attraction).
-    qbar = TRIP_RATE * bpop.sum() / (TRIP_RATE * bpop.sum() + plw.sum())
-    wP, wpop = np.vstack([bP, np.reshape(plP, (-1, 2))]), np.r_[bpop, plw * qbar / (TRIP_RATE * (1 + qbar))]
+    # Walkers: every trip end walks from its own door (demand()): homes by their zone's trip ends at homes, shared by the
+    # people there; each place and each job building by its own trip ends. Before 2026-10-29 places counted by an
+    # estimate from their pull and the one trip rate.
+    dP, dpop, _ = zones()
+    dod, beta, home_ends, place_ends, job_ends = demand()
+    per_person = home_ends / np.maximum(dpop, 1e-9)
+    jP, _ = jobs()
+    jin = (jP >= _m([s], [w])[0]).all(1) & (jP <= _m([n], [e])[0]).all(1)
+    wP = np.vstack([bP, np.reshape(plP, (-1, 2)), jP[jin]])
+    wpop = np.r_[bpop * per_person[cKDTree(dP).query(bP)[1]], place_ends[plin], job_ends[jin]]
 
     # 1. Key stops: where the trips start and end. A planner's stop goes to the nearest road spot a bus may stop on; an
     # AI stop goes to the spot (of the 40 nearest within 1 km) where the people around it walk least, judged from their
     # homes and the doors of the places they go to, the way an engineer would pick it on site.
     C = _m([x["lat"] for x in planner], [x["lng"] for x in planner]).reshape(-1, 2)  # planner stops: fixed centres
-    if spots is None:
-        C = _kmeans(np.vstack([hP, plP]), np.r_[hpop, plw / TRIP_RATE], n_stops, C)
+    if spots is None:  # weighted by trip ends: residents' (their zone's, per person) and the places'
+        C = _kmeans(np.vstack([hP, plP]), np.r_[hpop * per_person[cKDTree(dP).query(hP)[1]], place_ends[plin]], n_stops, C)
     cand = np.flatnonzero(R["stop_ok"])
     tree = cKDTree(R["P"][cand])
     snap, j = tree.query(C) if len(C) else (np.zeros(0), np.zeros(0, int))
@@ -477,10 +641,8 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
         exits[b].append((a, pth[-2]))
     uturn = frozenset((a, b, c) for b, ex in exits.items() for a, x in ex for c, y in ex if a != c and x == y)
 
-    # 4. Trips: residents produce TRIP_RATE trips a day, spread over destinations by attraction / travel time.
     zP = R["P"][nodes]
-    zone_m, zone = cKDTree(zP).query(bP)
-    zpop = np.bincount(zone, weights=bpop, minlength=K)
+    zpop = np.bincount(cKDTree(zP).query(bP)[1], weights=bpop, minlength=K)
 
     # 5. Walking: a trip end walks between the key stop and the home or the place's door (walkers wP, wpop), or the
     # nearest stop on a link that ends there once a bus stops on that link. walk[z] = minutes per trip end in zone z;
@@ -501,15 +663,21 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
             np.add.at(walk_save[z], [c[i][0] for i in j], wpop[h] * np.maximum(_walk_min(wm[h]) - _walk_min(d), 0))
     res = np.maximum(np.bincount(wz, weights=wpop, minlength=K), 1e-9)
     walk, walk_save = walk / res, walk_save / res[:, None]
-    np.add.at(zpop, planner_zone[: len(forced)], [float(x.get("demand", 0)) for x in forced])
-    attr = TRIP_RATE * zpop
-    if pl:
-        np.add.at(attr, cKDTree(zP).query(plP)[1], plw)
-    f = np.where(np.isfinite(T), np.exp(-BETA * np.where(np.isfinite(T), T, 0)), 0)
-    np.fill_diagonal(f, 0)
-    share = attr[None] * f
-    den = share.sum(1, keepdims=True)
-    od = TRIP_RATE * zpop[:, None] * np.divide(share, den, out=np.zeros_like(share), where=den > 0)
+
+    # 4. Trips: the state's person trips (demand()) whose demand zones both lie in view, between the key stops nearest
+    # them; a trip within one key stop's area is a walk or a local hop, not a bus trip. BUS_SHARE of them is the bus's.
+    # A planner stop's own "demand" (the trips a day it makes, e.g. a new housing estate) goes to and from the residents
+    # around it as visits would; before 2026-10-29 it was read as residents.
+    dz = np.flatnonzero((dP >= _m([s], [w])[0]).all(1) & (dP <= _m([n], [e])[0]).all(1))
+    M = np.zeros((K, len(dz)), np.float32)
+    M[cKDTree(zP).query(dP[dz])[1], np.arange(len(dz))] = 1
+    od = BUS_SHARE * (M @ dod[np.ix_(dz, dz)] @ M.T).astype(float)
+    np.fill_diagonal(od, 0)
+    for z, d in zip(planner_zone[: len(forced)], [float(x.get("demand", 0)) for x in forced]):
+        g = zpop * np.exp(-beta["other"] * np.where(np.isfinite(T[:, z]), T[:, z], np.inf))
+        g[z] = 0
+        od[:, z] += BUS_SHARE * d / 2 * g / max(g.sum(), 1e-9)
+        od[z, :] += BUS_SHARE * d / 2 * g / max(g.sum(), 1e-9)
 
     p = Problem(time=time, od=od, xy=np.column_stack([R["lng"][nodes], R["lat"][nodes]]), km=km, min_len=2, max_len=15,
                 headways=tuple(headways), mids=n_mid, walk=walk, walk_save=walk_save, walk_weight=WALK_WEIGHT, vot=VOT_RM_H / 60, unserved_cost=UNSERVED_RM,
@@ -683,6 +851,15 @@ if __name__ == "__main__":
     assert hosp[-1] > 5 * hosp[0], "hospitals differ by their district's real beds"
     size = {x["name"]: x["trips"] for x in places() if x["kind"] == "mall"}
     assert size["AEON Mall Kota Bharu"] > 5 * size["Bazar Tuan Padang"], "malls differ by their footprint"
+    kinds = Counter(x["kind"] for x in places())
+    assert kinds["rail"] >= 20 and kinds["airport"] >= 1 and kinds["gateway"] == len(GATEWAYS), kinds
+    assert all(abs(sum(o) - 1) < 1e-9 and abs(sum(b) - 1) < 1e-9 for _, _, o, b in PURPOSES.values()), "period shares"
+    dP, dpop, T = zones()
+    trips, beta, *_ = demand()
+    far = float(trips[T > 30].sum() / trips.sum())
+    print(f"demand: {len(dP)} zones, {trips.sum():,.0f} person trips a day ({trips.sum() / dpop.sum():.1f} per person), "
+          f"{far:.0%} over a 30-min drive; beta per purpose {({k: round(v, 3) for k, v in beta.items()})}; places {dict(kinds)}")
+    assert far < 0.25, "trips stay mostly short (63% took over a 30-min drive before 2026-10-29)"
 
     forced = [{"lat": 6.1254, "lng": 102.2386, "name": "Kota Bharu Centre", "demand": 5000}]
     p, net = build((6.0, 102.15, 6.2, 102.35), n_stops=30, forced=forced, locked=[forced + [{"lat": 6.099, "lng": 102.283}]])

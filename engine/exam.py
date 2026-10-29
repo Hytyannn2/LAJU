@@ -66,26 +66,13 @@ def _walk(metres):
 
 @lru_cache
 def targets():
-    """{kind: (n, 2) metres}: schools, clinics, hospitals, malls, markets, universities, colleges, bus stations from
-    kelantan.places(); rail stations, parks, stadiums, beaches and towns from OSM (cached in TARGETS)."""
+    """{kind: (n, 2) metres}: kelantan.places() by kind (schools, clinics, malls, rail stations, parks, ...), and towns
+    (OSM cities and towns, cached in TARGETS)."""
     if not TARGETS.exists():
-        poly, out = kelantan.boundary(), {"rail": [], "park": [], "stadium": [], "beach": [], "town": []}
-        pts = kelantan._osm("points", "place IN ('city', 'town') OR other_tags LIKE '%railway%' OR other_tags LIKE '%leisure%'"
-                                      " OR other_tags LIKE '%natural%'")
-        for g, nm, place, other in zip(pts.geometry, pts["name"], pts["place"], pts["other_tags"]):
-            t = kelantan._tags(other)
-            kind = ("town" if place in ("city", "town") else "rail" if t.get("railway") in ("station", "halt", "stop")
-                    else t.get("leisure") or t.get("natural"))
-            if kind in out and (kind != "park" or isinstance(nm, str)) and poly.contains(g):
-                out[kind].append([g.y, g.x])
-        areas = kelantan._osm("multipolygons", "leisure IN ('park', 'stadium', 'sports_centre') OR natural = 'beach'")
-        for g, nm, leisure, natural in zip(areas.geometry, areas["name"], areas["leisure"], areas["natural"]):
-            kind = "stadium" if leisure in ("stadium", "sports_centre") else leisure or natural
-            c = g.representative_point()
-            if kind in out and (kind != "park" or isinstance(nm, str)) and poly.contains(c):
-                out[kind].append([c.y, c.x])
-        TARGETS.write_text(json.dumps(out))
-    out = {k: kelantan._m(*np.array(v).reshape(-1, 2).T) for k, v in json.loads(TARGETS.read_text()).items()}
+        poly = kelantan.boundary()
+        towns = kelantan._osm("points", "place IN ('city', 'town')").geometry
+        TARGETS.write_text(json.dumps({"town": [[g.y, g.x] for g in towns if poly.contains(g)]}))
+    out = {"town": list(kelantan._m(*np.array(json.loads(TARGETS.read_text())["town"]).reshape(-1, 2).T))}
     for x in kelantan.places():
         out.setdefault(x["kind"], []).append(kelantan._m([x["lat"]], [x["lng"]])[0])
     return {k: np.array(v).reshape(-1, 2) for k, v in out.items()}
@@ -245,8 +232,9 @@ def straight(p, r):
 
 
 def load(name):
-    """(Problem, net, routes, headways, express, timetable minutes) of the newest saved run named `name`, on today's
-    rules."""
+    """(Problem, net, routes, headways, express, timetable minutes) of the newest saved run named `name`. A network is
+    judged at the headways it was saved with, so a later change of the trip model or the rules does not change its
+    exam; if its routes no longer match those (a stop it used is gone), at what sim.evaluate runs today."""
     import server
 
     d = next((x for x in (json.loads(f.read_text()) for f in sorted(server.RESULTS.glob("run-*.json"), reverse=True))
@@ -258,7 +246,9 @@ def load(name):
     if "timetable" in d:  # BAS.MY: its own headways and trip times, and every bus stops at every stop
         t = d["timetable"]
         return p, net, [straight(p, r) for r in rs], [x["headway"] for x in t], None, [x["minutes"] for x in t]
-    m = evaluate(p, rs, detail=True)
+    m = d["output"]["metrics"]
+    if len(m["headway"]) != len(rs) or len(m["express"]) != len(rs):
+        m = evaluate(p, rs, detail=True)
     return p, net, rs, m["headway"], m["express"], None
 
 
@@ -271,6 +261,7 @@ def save_basmy():
     req = server.DesignRequest(name="BAS.MY today", bbox=server.KELANTAN, n_routes=len(b), n_stops=150, optimizer="baseline",
                                max_route_min=0, locked=[[server.Stop(lat=s[1], lng=s[2], name=s[0]) for s in r["stops"]] for r in b])
     p, net, _, lk = server._problem(req)
+    req = req.model_copy(update={"spots": net["spots"]})  # the AI's key stops pinned: the baseline stays put
     server.RESULTS.mkdir(exist_ok=True)
     f = next((f for f in server.RESULTS.glob("run-*.json") if json.loads(f.read_text())["input"]["name"] == req.name),
              server.RESULTS / f"run-{datetime.now():%Y%m%d-%H%M%S-%f}.json")  # replaces the last one

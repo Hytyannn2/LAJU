@@ -1,6 +1,6 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-28 (brain v2 plan in section 9, Phase 0 = the exam done, BAS.MY today vs v1; git repository since
+Last updated: 2026-10-29 (brain v2 in section 9: Phase 0 the exam, Phase 1 who travels where; git repository since
 2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
 minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
 in the AI's designs, live AI map, click a stop for its routes: sections 2, 4, 5, 7, 8)
@@ -51,10 +51,15 @@ How the AI places stops and builds the network (kelantan.build):
      road path that passes no other key stop. Turning back at a key stop is a U-turn (sim.UTURN_MIN).
   4. Intermediate stops along each link: every 400 m (dense) / 800 m / 1.5 km (rural), only on
      stop-able road with >= 50 people nearby; links on the same road share stops.
-  5. Trips: gravity model. Residents make 0.05 bus trips/day, spread by attraction x exp(-0.05 x min).
-     A place attracts kelantan.PLACES trips by its kind; a hospital by its district's beds, a school by its district's
-     pupils, and (since 2026-10-18) a mall, supermarket or market by its building's footprint in OSM
-     (kelantan.TRIPS_PER_M2).
+  5. Trips (since 2026-10-29, brain v2 Phase 1): person trips by every mode and purpose (kelantan.PURPOSES: work,
+     school, study, health, shop, leisure, travel, other; 2.8 a person a day) between 2,000 demand zones for the whole
+     state (kelantan.zones, cached), each purpose's gravity beta fitted to its mean trip minutes. Places pull their
+     purpose (kelantan.KINDS) by size: a hospital by its district's beds, a school by its district's pupils, a mall,
+     supermarket, market or office by its building's footprint in OSM (kelantan.TRIPS_PER_M2); jobs on OSM's
+     commercial / retail / industrial land and at the places; part of work, shopping and leisure stays near home
+     (kelantan.NEAR_HOME). Summed between the key stops in view: a trip inside one key stop's area is local.
+     kelantan.BUS_SHARE (2.3%) of them is the bus's potential until Phase 2. (Before: residents made 0.05 bus trips a
+     day, spread over the other key stops by attraction x exp(-0.05 x min).)
 Score v2 (sim.py) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
   10 min since 2026-10-10, Mandl 5) + bus-km x RM per bus-km of the route's category + RM 100 per unserved trip (50 until
   2026-10-18; a trip needing 3+ changes counts as unserved since 2026-10-18, kelantan.MAX_TRANSFERS)) / trips.
@@ -434,8 +439,8 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
 =====================================================================
 8. NEXT SESSION - START HERE
 =====================================================================
-  START HERE (2026-10-28): section 9, the brain v2 plan. Phase 0 (the exam) is done; next is Phase 1 once the planner
-  says go. Items 0-5 below are the v1 state it starts from.
+  START HERE (2026-10-29): section 9, the brain v2 plan. Phases 0 (the exam) and 1 (who travels where) are done; next is
+  Phase 2 once the planner says go. Items 0-5 below are the v1 state it starts from.
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
@@ -482,7 +487,7 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
      "keep routes stable" penalty if planners need versions that change little.
 
 =====================================================================
-9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phase 1 next)
+9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phase 1 on 2026-10-29, Phase 2 next)
 =====================================================================
 Why. The planner wants "the best AI public transport planning": Kelantan as dependent on public transport as Japan, not
 car-centric. Measured on the saved "Kelantan network" (v1: 382 buses, 60 routes) on 2026-10-28, the old brain optimised
@@ -575,10 +580,34 @@ training); the AI retrains once, in Phase 5, when the rules have settled, so no 
      Not yet: Mumford's benchmark cities (Phase 6). Known limits: rail = every OSM station and stop (Rantau Panjang's
      may see no trains); ECRL's 2 Kelantan stations (Kota Bharu; Cherang Tuli, Pasir Puteh; passengers from Jan 2027)
      are not in OSM yet; D51 and D52 stop at the state border.
-  1. Who travels where. Demand rebuilt: ~2,000 small zones and short trips kept (a trip inside one key stop's area is a
-     walk or a local hop, no longer pushed across the state); trips by purpose (school, work, hospital, shopping,
-     recreation, rail, border), each with its own pull (pupils, beds, floor area, ...) and time of day (morning peak,
-     day, evening peak, night). New places from OSM: rail stations, parks, stadiums, offices, factories.
+  1. Who travels where [x] (2026-10-29). kelantan.zones / demand / jobs: person trips by purpose (PURPOSES) between
+     2,000 demand zones for the whole state, a gravity beta per purpose fitted to its mean minutes, part of work,
+     shopping and leisure near home (NEAR_HOME), out / back shares per period of the day for Phase 3 (PERIODS). New
+     places (places(); places.json rebuilt, the old one kept as places_v1.json): 39 rail stations and stops, 24 named
+     parks, 19 stadiums, 14 beaches, 334 offices, the airport, 2 border crossings (GATEWAYS); a place mapped twice counts
+     once (1,174 places, was 746); jobs on OSM's commercial / retail / industrial land (cache/jobs.npz). Walkers and the
+     key stops' k-means count trip ends from demand(); a planner stop's "demand" is now trips (it was read as residents).
+       5.37 M person trips a day (2.8 a person), mean 15 min by road, 11% over 30 min. Between the 150 key stops: 94,386
+       bus-potential trips a day (BUS_SHARE 0.023 keeps the old 95,375), mean 27 min (was 44), over 30 min 34% (was
+       63%), over 60 min 6% (was 24%). Busiest places: AEON Mall 19,200 visits a day, KB Mall 17,000, Pasar Besar
+       Machang 15,900, Pasir Puteh 11,900, Tanah Merah 11,500, Siti Khadijah 10,400 (before NEAR_HOME the mapped markets
+       took every shopping trip: Tanah Merah 29,000).
+     Exam, GA 5 min each on the saved network's 150 key stops, old trips vs new (same rules, same RM score):
+                                            before (old trips)    after (new trips)
+       buses / bus-km a day                 319 / 145,402         297 / 122,354
+       covered, all                         39%                   39%
+       average of the 6 access tests        40%                   40%
+       SK Kota -> KB Mall                   90 min, 2 changes     35 min, 1 change
+       SK Kota -> AEON Mall                 101 min, 2 changes    76 min, 2 changes
+       Wakaf Che Yeh -> HRPZ II             77 min, 2 changes     51 min, 2 changes
+       routes over 1.5x / both ends rest    5 / 3 of 60           10 / 1 of 60
+     -> the same reach with 7% fewer buses and 16% less driving, and the planner's test trips much quicker. The access
+     tests do not move: the GA still chases the RM score (Phase 2 changes the goal). Crooked routes and route ends are
+     Phase 3's. One 5-min GA run each: a point or two is noise.
+     The exam's destinations now come from kelantan.places() (+ towns); it finds more stadiums and beaches than the
+     exam's own list did, so the park test rose 2-4 points for every network (BAS.MY today 30% -> 34%). BAS.MY's run now
+     pins its key stops (input.spots): since Phase 1, 692 stops and 52 buses (were 706 / 53), average access still 26%.
+     Before Phase 5: delete cache/rl_cities.pkl (the RL's training maps still carry the old trips).
   2. Riders react, new goal. Each trip compares the bus (walking and waiting count double in the heat, 10 min per
      change) with a motorbike or car; people without a vehicle ride more readily. The one unknown (how much people
      prefer their motorbike) is set so BAS.MY's 16 routes carry ~2,800 a day. Score: riders + people passing the access
