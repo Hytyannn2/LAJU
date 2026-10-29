@@ -17,7 +17,13 @@ as in the UTRP literature's d_un).
 Walking (Kelantan, Problem.walk): every trip end adds the walk from home to the nearest stop a bus serves. Inter-town
 buses run express (key stops only) on a link where another bus still stops, or where their riders save more minutes
 than the people near the skipped stops then walk.
+
+Score v3 by period of the day (brain v2 Phase 3, Problem.period_h): each route's buses per period follow its riders then,
+at clock-face headways (CLOCK) so buses meet; a change at a hub waits TIMED_MIN; a route that does not end where a bus
+can wait drives empty to the nearest such place and back (Problem.rest_min).
 """
+import bisect
+import heapq
 import math
 from collections import Counter
 from dataclasses import dataclass
@@ -40,6 +46,16 @@ THETA = 0.015       # logit: each felt minute the bus loses to the motorbike div
 LIFT_MIN = 120      # people without a vehicle: a lift, the walk or not going feels this much worse than driving would, so
                     # they take the same bus ~6x as often as people with one (e^(0.015 x 120); at 30 it was 1.6x)
 SCORE_SCALE = 1000  # score = SCORE_SCALE / (riders + cover_weight x people near a served stop): lower is better
+# Brain v2 Phase 3 (2026-10-29): buses by period of the day, clock-face headways, timed transfers, route ends.
+CLOCK = (5, 10, 15, 20, 30, 60, 120)  # the headways a route runs (min): each divides an hour or two, so buses can meet
+TIMED_MIN = 5.0   # a change at a hub waits this long, not half the headway: its buses arrive and leave together
+HUB_ROUTES = 3    # a stop where this many routes meet is a hub; at a bus or rail station (Problem.hubs) two are enough
+PEAK_HOUR = 1.3   # a period's busiest hour carries 1.3x its average hour: no bus may be over-full in it
+REST_END = 0.1   # each route end too far from a rest place (Problem.rest_end) multiplies the score by 1.1: routes end only
+                 # where a bus can wait (planner, 2026-10-28). The empty run there alone (rest_min) left 4 of 16 GA routes
+                 # 15-26 min there and back from one (2026-10-29)
+E_RANGE_KM = 250  # an electric bus on one charge (12 m e-buses: 200-300 km)
+E_CHARGE_KM_MIN = 2.0  # range a minute of charging at a layover adds (~120 kW at 1 kWh/km)
 CATEGORIES = (  # name, minimum service (a bus at least every ... min), passengers per bus, RM per bus-km: knobs, not data
     ("shuttle", 30, 30, 2.5),    # minibus: first/last mile between homes, offices and stations
     ("local", 30, 60, 4.0),      # 12 m city bus: town centre and its suburbs
@@ -85,6 +101,13 @@ class Problem:
     cover_pop: np.ndarray | None = None   # group of homes (a cell: homes with the same stops near), and its people
     cover_links: np.ndarray | None = None  # (links, 2) key-stop pairs; a link covers while a bus stops on it
     cover_weight: float = 0.0             # a person near a served stop counts as this many daily riders
+    period_h: tuple = ()                  # hours of each period of the day (score v3); () = one period, service_hours long
+    od_k: np.ndarray | None = None        # (periods, n, n) od by period (od is their sum)
+    captive_k: np.ndarray | None = None   # (periods, n, n) od_captive by period
+    hubs: np.ndarray | None = None        # (n,) bool: at a bus or rail station, where two routes meeting time their changes
+    rest_min: np.ndarray | None = None    # (n,) minutes from each stop to the nearest place a route may end, and back
+    rest_end: np.ndarray | None = None    # (n,) bool: near enough such a place for a route to end here
+    depot_km: np.ndarray | None = None    # (n,) km from the nearest depot to each stop, and back
 
 
 def quickest(p):
@@ -92,31 +115,53 @@ def quickest(p):
     return dijkstra(csr_matrix(np.where(np.isfinite(p.time), p.time, 0)), return_predecessors=True)
 
 
-def _assign(p, routes, heads, wait=1.0):
+def _clock(h):
+    """The longest clock-face headway (CLOCK) not over h minutes (the shortest one if h is shorter still)."""
+    return CLOCK[max(0, bisect.bisect_right(CLOCK, h + 1e-9) - 1)]
+
+
+def electric(km, cycle, hours):
+    """Can an electric bus run a route of `km` one way all day (`hours` of round trips of `cycle` minutes, back to back)
+    on its range (E_RANGE_KM) plus what it charges in each layover (LAYOVER_MIN)?"""
+    return hours * 60 / cycle * (2 * km - E_CHARGE_KM_MIN * LAYOVER_MIN) <= E_RANGE_KM
+
+
+def _assign(p, routes, heads, wait=1.0, hubs=()):
     """Quickest paths over the routes: every boarding waits `wait` x half its route's headway and pays the transfer
-    penalty, taken off again for the first boarding. -> (minutes between stops (n, n), predecessors over route nodes)"""
+    penalty, taken off again for the first boarding; a change at one of the `hubs` waits at most TIMED_MIN (timed
+    transfers). A route whose headway is infinite does not run. -> (minutes between stops (n, n), predecessors over the
+    nodes: stops 0..n-1, one per (route, stop) from n, then each hub's change node, where its buses let riders off)"""
     n = len(p.od)
-    rows, cols, w, base = [], [], [], n  # nodes: 0..n-1 = stops, then one node per (route, stop)
+    hub = {s: n + sum(len(r) for r in routes) + i for i, s in enumerate(hubs)}
+    rows, cols, w, base = [], [], [], n
     for r, h in zip(routes, heads):
         board = p.transfer_min + wait * h / 2  # every boarding pays this; the first boarding's penalty is removed below
-        for k, s in enumerate(r):
+        for k, s in enumerate(r if np.isfinite(h) else ()):
             rows += [s, base + k]
-            cols += [base + k, s]
+            cols += [base + k, hub.get(s, s)]
             w += [board, 1e-9]  # board, alight (csgraph drops exact zeros)
+            if s in hub:  # board after a change here
+                rows.append(hub[s])
+                cols.append(base + k)
+                w.append(p.transfer_min + wait * min(TIMED_MIN, h / 2))
             if k:
                 turn = UTURN_MIN if k >= 2 and (r[k - 2], r[k - 1], s) in p.uturn else 0
                 rows += [base + k - 1, base + k]
                 cols += [base + k, base + k - 1]
                 w += [p.time[r[k - 1], s] + turn, p.time[s, r[k - 1]] + turn]
         base += len(r)
-    G = csr_matrix((w, (rows, cols)), shape=(base, base))
+    rows += list(hub.values())  # off the bus at a hub: arrived there
+    cols += list(hub)
+    w += [1e-9] * len(hub)
+    G = csr_matrix((w, (rows, cols)), shape=(base + len(hub),) * 2)
     D, P = dijkstra(G, indices=np.arange(n), return_predecessors=True)
     return D[:, :n] - p.transfer_min, P
 
 
 def evaluate(p, routes, detail=False, fixed=None):
     """Metrics for a route set (lists of stop indices). detail=True adds transfers and per-segment bus loads.
-    fixed: each route's own headway (a real timetable) instead of the frequencies score v3 sets."""
+    fixed: each route's own headway (a real timetable) instead of the frequencies score v3 sets: one for the whole day
+    or one per period (Problem.period_h; inf = no bus then)."""
     n = len(p.od)
     routes = [list(r) for r in routes if len(r) >= 2]
     km = p.time if p.km is None else p.km
@@ -191,8 +236,11 @@ def evaluate(p, routes, detail=False, fixed=None):
 
 
 def _shape(p, routes, m):
-    """The score's multiplier for route km over budget, routes over the time cap and crooked minutes."""
+    """The score's multiplier for route km over budget, routes over the time cap, crooked minutes and route ends away
+    from a rest place."""
     x = 1.0
+    if p.rest_end is not None:
+        x *= 1 + REST_END * sum((not p.rest_end[r[0]]) + (not p.rest_end[r[-1]]) for r in routes)
     if p.max_km and m["total_km"] > p.max_km:
         x *= 1 + (m["total_km"] - p.max_km) / p.max_km
     if p.max_route_min:
@@ -209,80 +257,157 @@ def _shape(p, routes, m):
 
 
 def _choose(p, T, reach, wz):
-    """Bus trips a day between key stops: each trip takes the bus with the logit chance (THETA) of its felt minutes
-    (T, plus both walks x walk_weight, plus asc) against driving (p.drive), or against a lift (LIFT_MIN) for the trips
-    of people without a vehicle (p.od_captive)."""
+    """The chance that a trip between key stops takes the bus, for people with a motorbike or car and for people without
+    one: the logit (THETA) of its felt minutes (T, plus both walks x walk_weight, plus asc) against driving (p.drive),
+    or against a lift (LIFT_MIN). -> (own, lift), each (n, n)"""
     gap = np.where(reach, T + p.walk_weight * (wz[:, None] + wz[None]) + p.asc - p.drive, np.inf)
-    own, lift = (1 / (1 + np.exp(np.minimum(THETA * g, 700))) for g in (gap, gap - LIFT_MIN))
-    captive = 0.0 if p.od_captive is None else p.od_captive
-    return (p.od - captive) * own + captive * lift
+    return tuple(1 / (1 + np.exp(np.minimum(THETA * g, 700))) for g in (gap, gap - LIFT_MIN))
 
 
-def _share(budget, cycle, boardings, floor):
-    """Whole buses per route: each first gets what its floor (buses an hour) needs over its cycle (hours a round trip
-    takes), rounded up; every further bus goes where it cuts most waiting (boardings x the half-headway it saves: the
-    square-root rule, Newell 1971, in whole buses). -> (buses per route, buses the floors need beyond the budget).
-    Fractions of a bus per route let 64 budgeted buses need 73 on the road (2026-10-29)."""
-    b = np.maximum(1, np.ceil(floor * cycle - 1e-9)).astype(int)
-    for _ in range(int(budget) - int(b.sum())):
-        b[np.argmax(boardings * cycle * (1 / b - 1 / (b + 1)))] += 1
-    return b, max(0, int(b.sum()) - int(budget))
+def _share(budget, cycle, rate, floor):
+    """Clock-face headways (CLOCK) per route and period of the day for a budget of buses. Each route starts at the
+    longest one within its floor (floor (routes, periods): the longest headway allowed, the minimum service or less so
+    that no bus is over-full); then the step to the next shorter headway that saves most waiting per extra bus goes first
+    (rate (routes, periods): boardings an hour, x the minutes of half-headway saved: the square-root rule, Newell 1971,
+    in whole buses and clock-face steps), while the period's buses fit the budget. One price of a bus all day: a period
+    that never runs short of buses buys only the steps worth as much as the last one the budget allowed in a period that
+    did, so quiet hours run fewer buses ("jimat", the planner, 2026-10-28). cycle (routes,): minutes a round trip takes.
+    -> (headways (routes, periods), buses (routes, periods), buses the floors need beyond the budget). ponytail: with buses
+    to spare all day every step that saves any waiting runs; a cost per bus-hour would keep the night lean then."""
+    nr, nk = rate.shape
+    start = np.maximum(np.searchsorted(CLOCK, floor + 1e-9, side="right") - 1, 0)
+    need = lambda r, i: max(1, math.ceil(cycle[r] / CLOCK[i] - 1e-9))
+
+    def run(k, price):
+        i, heap = start[:, k].copy(), []
+        b = [need(r, i[r]) for r in range(nr)]
+        used, last, short = sum(b), 0.0, False
+
+        def push(r):
+            if i[r] > 0:
+                db = need(r, i[r] - 1) - b[r]
+                heapq.heappush(heap, (-rate[r, k] * (CLOCK[i[r]] - CLOCK[i[r] - 1]) / 2 / max(db, 1e-9), r, db))
+
+        for r in range(nr):
+            push(r)
+        while heap:
+            v, r, db = heapq.heappop(heap)
+            if -v <= 0 or -v < price:
+                break
+            if used + db > budget:
+                short = True  # this step does not fit: the route keeps its headway
+                continue
+            i[r], b[r], used = i[r] - 1, b[r] + db, used + db
+            last = -v if db else last  # a step that needs no extra bus sets no price
+            push(r)
+        return i, b, used, last if short else 0.0
+
+    out = [run(k, 0.0) for k in range(nk)]
+    price = max((x[3] for x in out), default=0.0)
+    out = [x if x[3] == price else run(k, price) for k, x in enumerate(out)]
+    floors = max((sum(need(r, start[r, k]) for r in range(nr)) for k in range(nk)), default=0)
+    return (np.array([[CLOCK[j] for j in x[0]] for x in out], float).reshape(nk, nr).T,
+            np.array([x[1] for x in out], int).reshape(nk, nr).T, max(0, floors - int(budget)))
 
 
 def _v3(p, routes, cats, floor_h, route_km, fixed=None):
-    """Score v3 (brain v2 Phase 2, 2026-10-29): riders choose, and the routes share a budget of buses. Every trip compares
-    the bus (waits x WAIT_WEIGHT, walks x walk_weight, transfer_min per change, asc) with the motorbike or car, or a lift
-    for people without one (_choose); a trip needing more than max_transfers changes takes no bus. Two rounds: at the
-    minimum service (or the fixed timetable), then at what the budget buys by the square-root rule (_share), never under
-    the minimum service or over-full. Score = SCORE_SCALE / (riders + cover_weight x people near a served stop), times the
-    shape penalties (_shape) and the buses over budget. ponytail: riders the second round's frequencies win do not
-    change the shares again; the express pattern is decided in the first round."""
-    n = len(p.od)
+    """Score v3 (brain v2 Phase 2, 2026-10-29; by period of the day since Phase 3): riders choose, and the routes share a
+    budget of buses. Every trip compares the bus (waits x WAIT_WEIGHT, walks x walk_weight, transfer_min per change, asc)
+    with the motorbike or car, or a lift for people without one (_choose); a trip needing more than max_transfers changes
+    takes no bus. Two rounds: every period's trips on the paths at the minimum service, which set the express links and
+    each route's riders and loads per period; then each period at the clock-face headways the budget buys (_share), or at
+    the fixed timetable. A change at a hub waits at most TIMED_MIN (a fixed timetable does not time them); a route end
+    away from a rest place costs the empty run there and back (p.rest_min) every round trip. Score = SCORE_SCALE / (riders
+    + cover_weight x people near a served stop), times the shape penalties (_shape) and the buses the floors need beyond
+    the budget. ponytail: riders the second round's frequencies win do not change the shares again; the express pattern
+    is decided in the first round; a hub times every change there, where a real timetable can time a route at about two."""
+    n, nr = len(p.od), len(routes)
+    hours = np.array(p.period_h or (p.service_hours,), float)
+    od_k = p.od[None] if p.od_k is None else p.od_k
+    cap_k = p.captive_k if p.captive_k is not None else None if p.od_captive is None else p.od_captive[None]
     route_min = np.array([sum(p.time[a, b] for a, b in zip(r, r[1:])) + _turns(p, r) for r in routes], float)
     route_back = np.array([sum(p.time[b, a] for a, b in zip(r, r[1:])) + _turns(p, r) for r in routes], float)
-    express, heads, over = [[False] * (len(r) - 1) for r in routes], list(fixed or floor_h), 0.0
-    for first in (True, False):
-        T, P = _assign(p, routes, heads, WAIT_WEIGHT)
-        stopping = np.zeros((n, n), bool)  # links where a bus stops at the stops between the key stops
+    dead = np.array([0.0 if p.rest_min is None else p.rest_min[r[0]] + p.rest_min[r[-1]] for r in routes])
+    meet = Counter(s for r in routes for s in r)
+    hubs = [] if fixed is not None else sorted(int(s) for s, c in meet.items()
+                                               if c >= HUB_ROUTES or c >= 2 and p.hubs is not None and p.hubs[s])
+    express = [[False] * (len(r) - 1) for r in routes]
+
+    paths_at = {}  # headways -> quickest paths: round 2 often runs the minimum service of round 1
+
+    def ride(heads, ks):
+        """Periods ks at the same headways: (T, reach, walk per trip end, bus trips (len(ks), n, n), paths, trips that
+        chose the bus before the limit on changes, links where a bus stops between the key stops)."""
+        if tuple(heads) not in paths_at:
+            paths_at[tuple(heads)] = _assign(p, routes, heads, WAIT_WEIGHT, hubs)
+        T, P = paths_at[tuple(heads)]
+        stopping = np.zeros((n, n), bool)
         for r, e in zip(routes, express):
             for (a, b), x in zip(zip(r, r[1:]), e):
                 stopping[a, b] = stopping[b, a] = stopping[a, b] or not x
         wz = np.zeros(n) if p.walk is None else p.walk - (p.walk_save * stopping).sum(1)  # minutes per trip end
         reach = np.isfinite(T)
-        R = _choose(p, T, reach, wz)
-        paths = _transfers_and_loads(p, routes, P, reach, float(R.sum()) or 1.0, R)  # drops trips over max_transfers
-        R = np.where(reach, R, 0.0)
-        if not first:
-            break
+        own, lift = _choose(p, T, reach, wz)
+        cap = 0.0 if cap_k is None else cap_k[ks]
+        R = (od_k[ks] - cap) * own + cap * lift
+        chose = float(R.sum())
+        paths = _transfers_and_loads(p, routes, P, reach, chose or 1.0, R)  # drops trips over max_transfers
+        return T, reach, wz, np.where(reach, R, 0.0), paths, chose, stopping
+
+    if fixed is None:  # round 1: the minimum service
+        _, _, _, R, paths, _, _ = ride([_clock(h) for h in floor_h], range(len(hours)))
         if p.mids is not None:
-            express = _express(p, routes, cats, paths["riders"], R.sum(0) + R.sum(1))
+            express = _express(p, routes, cats, paths["riders"], R.sum((0, 1)) + R.sum((0, 2)))
             skip = np.array([sum(DWELL_MIN * p.mids[a, b] for (a, b), x in zip(zip(r, r[1:]), e) if x)
                              for r, e in zip(routes, express)])
             route_min, route_back = route_min - skip, route_back - skip
-        cycle = (route_min + route_back + LAYOVER_MIN) / 60
-        buses = np.maximum(1, np.ceil(cycle * 60 / np.array(heads, float) - 1e-9)).astype(int)  # a timetable's own
-        if fixed is None:
-            peak = np.array([max(x) * PEAK_SHARE for x in paths["loads"]])
-            floor = np.maximum(60 / np.array(floor_h, float), peak / np.array([CATEGORIES[c][2] for c in cats]))
-            buses, over = _share(p.budget, cycle, np.array(paths["boardings"]), floor)
-            heads = list(60 * cycle / buses)
-    f, riders = 60 / np.array(heads, float), float(R.sum())
-    served = np.zeros(n, bool)
-    served[[s for r in routes for s in r]] = True
+    cycle = route_min + route_back + LAYOVER_MIN + dead  # minutes a round trip takes a bus
+    if fixed is None:
+        peak = np.array([x.max(0) for x in paths["loads"]]).reshape(nr, len(hours)) / hours * PEAK_HOUR  # busiest hour
+        seats = np.array([CATEGORIES[c][2] for c in cats], float)[:, None]
+        floor = np.minimum(np.array(floor_h, float)[:, None], 60 * seats / np.maximum(peak, 1e-9))
+        heads, buses, over = _share(p.budget, cycle, np.array(paths["boardings"]).reshape(nr, len(hours)) / hours, floor)
+    else:
+        heads = np.broadcast_to(np.array(fixed, float).reshape(nr, -1), (nr, len(hours)))
+        buses, over = np.where(np.isfinite(heads), np.maximum(1, np.ceil(cycle[:, None] / heads - 1e-9)), 0).astype(int), 0
+
+    groups = {}  # round 2: each period at its headways; periods with the same ones share their paths
+    for k in range(len(hours)):
+        groups.setdefault(tuple(heads[:, k]), []).append(k)
+    board, loads = np.zeros((nr, len(hours))), [np.zeros((len(r) - 1, len(hours))) for r in routes]
+    riders = chose = felt = walked = served = 0.0
+    by_changes = np.zeros(3)
+    for hk, ks in groups.items():
+        T, reach, wz, R, paths, c, stopping = ride(list(hk), ks)
+        riders, chose = riders + float(R.sum()), chose + c
+        by_changes += c * np.array([paths["d0"], paths["d1"], paths["d2"]])
+        board[:, ks] = np.array(paths["boardings"]).reshape(nr, len(ks))
+        for x, y in zip(loads, paths["loads"]):
+            x[:, ks] = y
+        felt += float((R * np.where(reach, T + wz[:, None] + wz[None], 0.0)).sum())
+        walked += float((R * (wz[:, None] + wz[None])).sum())
+        served += float(sum(od_k[k][reach].sum() for k in ks))
+    on = np.zeros(n, bool)
+    on[[s for r in routes for s in r]] = True
     covered = 0.0 if p.cover_pop is None else float(p.cover_pop @ (p.cover_cells @ np.r_[
-        served, stopping[p.cover_links[:, 0], p.cover_links[:, 1]]] > 0))  # people with any served stop near
-    felt = np.where(reach, T + wz[:, None] + wz[None], 0.0)
-    m = {"riders": riders, "boardings": float(sum(paths["boardings"])), "covered": covered, "market": float(p.od.sum()),
-         "unserved": float(1 - p.od[reach].sum() / p.od.sum()) if p.od.sum() else 0.0,
+        on, stopping[p.cover_links[:, 0], p.cover_links[:, 1]]] > 0))  # people with any served stop near
+    f = np.where(np.isfinite(heads), 60 / heads, 0.0)  # buses an hour each way
+    most, fleet_k = buses.max(1, initial=0), buses.sum(0)
+    m = {"riders": riders, "boardings": float(board.sum()), "covered": covered, "market": float(p.od.sum()),
+         "unserved": float(1 - served / p.od.sum()) if p.od.sum() else 0.0,
          "route_min": route_min.tolist(), "route_min_back": route_back.tolist(), "route_km": route_km,
-         "total_km": sum(route_km), "att": float((R * felt).sum() / riders) if riders else 0.0,
-         "walk": float((R * (wz[:, None] + wz[None])).sum() / riders) if riders else 0.0,
-         "d0": paths["d0"], "d1": paths["d1"], "d2": paths["d2"], "dun": paths["dun"], "loads": paths["loads"],
-         "peak_hour_load": [round(max(x) * PEAK_SHARE) for x in paths["loads"]], "category": [CATEGORIES[c][0] for c in cats],
-         "express": express, "headway": [round(float(h), 1) for h in heads],
-         "buses": [int(x) for x in buses], "budget": p.budget,
-         "bus_km_day": float(sum(2 * k * p.service_hours * x for k, x in zip(route_km, f)))}
-    m["fleet"] = sum(m["buses"])
+         "total_km": sum(route_km), "att": felt / riders if riders else 0.0, "walk": walked / riders if riders else 0.0,
+         **{f"d{k}": float(by_changes[k] / chose) if chose else 0.0 for k in range(3)},
+         "dun": float(1 - by_changes.sum() / chose) if chose else 0.0, "loads": [x.sum(1).round(1).tolist() for x in loads],
+         "peak_hour_load": [round(float((x / hours).max() * PEAK_HOUR)) for x in loads],
+         "category": [CATEGORIES[c][0] for c in cats], "express": express,
+         "periods": [[round(float(h), 1) if np.isfinite(h) else None for h in row] for row in heads],  # per route, period
+         "headway": [round(float(row[np.isfinite(row)].min()), 1) for row in heads],  # its busiest period's
+         "buses": [int(x) for x in most], "fleet_k": [int(x) for x in fleet_k], "fleet": int(fleet_k.max(initial=0)),
+         "budget": p.budget, "hubs": hubs, "bus_km_day": float((2 * np.array(route_km, float)[:, None] * hours * f).sum()),
+         "empty_km_day": 0.0 if p.depot_km is None else float(sum(b * min(p.depot_km[r[0]], p.depot_km[r[-1]])
+                                                                  for r, b in zip(routes, most))),  # from depots and back
+         "electric": [bool(electric(k, c, hours.sum())) for k, c in zip(route_km, cycle)]}
     s = SCORE_SCALE / max(riders + p.cover_weight * covered, 1e-9)
     if over:
         s *= 1 + over / p.budget
@@ -312,47 +437,54 @@ def _turns(p, r):
     return UTURN_MIN * sum(t in p.uturn for t in zip(r, r[1:], r[2:]))
 
 
-def _walk(P, o, d, flow, n):
-    """Walk the quickest paths o -> d back at once: each one's boardings, and its flow on each route edge v->v+1 (fwd) /
-    v+1->v (bwd), stored at v, and onto each route node it boards at (on)."""
+def _walk(P, o, d, n, m):
+    """Walk the quickest paths o -> d back at once. -> (each path's boardings, and for the route edges v->v+1 (fwd) and
+    v+1->v (bwd), stored at v, and the route nodes boarded at (on): (nodes, paths) of every use). Route nodes are
+    n .. n + m - 1 (_assign): below them the stops, above them the hubs' change nodes."""
     cur, boards = d.copy(), np.zeros(len(d), int)
-    fwd, bwd, on = np.zeros(P.shape[1]), np.zeros(P.shape[1]), np.zeros(P.shape[1])
+    ev = [([np.zeros(0, int)], [np.zeros(0, int)]) for _ in range(3)]  # (nodes, paths) of fwd, bwd, on
     live = cur != o
     while live.any():
         i = np.flatnonzero(live)
         prv, c = P[o[i], cur[i]], cur[i]
-        b = (prv < n) & (c >= n)
+        rp, rc = (prv >= n) & (prv < n + m), (c >= n) & (c < n + m)
+        up, down, b = rp & rc & (c == prv + 1), rp & rc & (c == prv - 1), rc & ~rp  # b: onto a bus from a stop / change node
         boards[i] += b
-        np.add.at(on, c[b], flow[i][b])
-        ride = (prv >= n) & (c >= n)
-        up, down = ride & (c == prv + 1), ride & (c == prv - 1)
-        np.add.at(fwd, prv[up], flow[i][up])
-        np.add.at(bwd, c[down], flow[i][down])
+        for (at, of), x, v in zip(ev, (up, down, b), (prv, c, c)):
+            at.append(v[x])
+            of.append(i[x])
         cur[i] = prv
         live[i] = prv != o[i]
-    return boards, fwd, bwd, on
+    return boards, *((np.concatenate(at), np.concatenate(of)) for at, of in ev)
+
+
+def _put(use, flow, size):
+    """The flow ((paths,) or (paths, periods)) of the paths onto the nodes they use (_walk): (size,) or (size, periods)."""
+    at, of = use
+    return (np.bincount(at, flow[of], minlength=size) if flow.ndim == 1 else
+            np.stack([np.bincount(at, flow[of, k], minlength=size) for k in range(flow.shape[1])], 1))
 
 
 def _transfers_and_loads(p, routes, P, reach, total, trips=None):
     """Walk every used shortest path back (vectorised over all OD pairs): count boardings, add up segment loads of
-    `trips` (default p.od). Trips needing more than p.max_transfers transfers are taken off `reach` (in place): riders
-    would not make them."""
-    n, trips = len(p.od), p.od if trips is None else trips
-    o, d = np.nonzero((trips > 0) & reach)
-    boards, fwd, bwd, on = _walk(P, o, d, trips[o, d], n)
+    `trips` (default p.od; (periods, n, n): loads and boardings per period, all on the same paths). Trips needing more
+    than p.max_transfers transfers are taken off `reach` (in place): riders would not make them."""
+    n, m, trips = len(p.od), sum(len(r) for r in routes), p.od if trips is None else trips
+    o, d = np.nonzero((trips > 0).reshape(-1, n, n).any(0) & reach)
+    flow = trips[..., o, d].T  # (pairs,) or (pairs, periods)
+    boards, fwd, bwd, on = _walk(P, o, d, n, m)
     if p.max_transfers is not None and (far := boards > p.max_transfers + 1).any():
         reach[o[far], d[far]] = False
-        _, f2, b2, o2 = _walk(P, o[far], d[far], -trips[o[far], d[far]], n)  # their loads come off again
-        fwd, bwd, on = fwd + f2, bwd + b2, on + o2
-        o, d, boards = o[~far], d[~far], boards[~far]
-    flow = trips[o, d]
+        flow = flow * ~far.reshape((-1,) + (1,) * (flow.ndim - 1))  # nobody rides them
+    fwd, bwd, on = (_put(x, flow, P.shape[1]) for x in (fwd, bwd, on))
     shares = [float(flow[boards == k + 1].sum() / total) if total else 0.0 for k in range(3)]
     loads, riders, boarding, base = [], [], [], n
     for r in routes:
         seg = slice(base, base + len(r) - 1)
-        loads.append(np.maximum(fwd[seg], bwd[seg]).round(1).tolist())
-        riders.append(fwd[seg] + bwd[seg])  # both directions, per day
-        boarding.append(float(on[base: base + len(r)].sum()))  # boardings per day
+        ld = np.maximum(fwd[seg], bwd[seg])
+        loads.append(ld.round(1).tolist() if ld.ndim == 1 else ld)
+        riders.append((fwd[seg] + bwd[seg]).reshape(len(r) - 1, -1).sum(1))  # both directions, per day
+        boarding.append(float(on[base: base + len(r)].sum()) if on.ndim == 1 else on[base: base + len(r)].sum(0))  # a day
         base += len(r)
     return {"d0": shares[0], "d1": shares[1], "d2": shares[2], "dun": 1 - sum(shares), "loads": loads, "riders": riders,
             "boardings": boarding}
@@ -446,9 +578,33 @@ if __name__ == "__main__":
     v3.budget = 40
     b = evaluate(v3, [[0, 1, 2, 3]])
     assert b["riders"] > a["riders"] > 0 and b["score"] < a["score"] and b["headway"][0] < a["headway"][0], (a, b)
-    assert a["fleet"] == 4 and a["covered"] == 250 and evaluate(v3, [[1, 2]])["covered"] == 50, a["covered"]
+    assert a["covered"] == 250 and evaluate(v3, [[1, 2]])["covered"] == 50, a["covered"]
     assert abs(a["score"] - SCORE_SCALE / (a["riders"] + 0.1 * 250)) < 1e-9
     v3.od_captive = v3.od / 2  # half the trips by people without a vehicle: the bus wins more of them
     assert evaluate(v3, [[0, 1, 2, 3]])["riders"] > b["riders"]
     assert evaluate(v3, [[0, 1, 2, 3]], fixed=[60])["headway"] == [60]  # a real timetable keeps its headway
+    # Phase 3. Clock-face: a 22-min round trip runs every 10 min on 3 buses; a 4th bus would not shorten it, a 5th would
+    assert (a["fleet"], a["headway"], b["headway"]) == (3, [10], [5]), (a["fleet"], a["headway"], b["headway"])
+    T, _ = _assign(p, [[0, 1], [1, 2]], [60, 60])
+    Th, _ = _assign(p, [[0, 1], [1, 2]], [60, 60], hubs=[1])  # a timed change at stop 1 waits TIMED_MIN, not 30 min
+    assert abs(T[0, 2] - (30 + 2 + 5 + 30 + 2)) < 1e-6 and abs(Th[0, 2] - (30 + 2 + 5 + TIMED_MIN + 2)) < 1e-6, Th[0, 2]
+    assert abs(Th[0, 1] - 32) < 1e-6 and abs(Th[1, 2] - 32) < 1e-6  # ending or starting at the hub: no change, no timing
+    day = Problem(time=line, od=od * 100, xy=p.xy, km=km8, headways=HEADWAYS, drive=np.full((4, 4), 10.0), budget=4,
+                  period_h=(3, 15), od_k=np.stack([od * 90, od * 10]))  # 90% of the trips in a 3-hour peak
+    m = evaluate(day, [[0, 1, 2, 3]])  # the peak runs out of buses; the quiet hours buy none worth as much ("jimat")
+    assert m["periods"] == [[10, 30]] and m["fleet_k"] == [3, 1] and m["fleet"] == 3, m["periods"]
+    assert m["bus_km_day"] == 2 * 24 * (3 * 6 + 15 * 2) and m["electric"] == [False]  # 2,304 bus-km on 3 buses
+    day.rest_min = np.array([0, 0, 0, 20.0])  # stop 3 is 10 min from a place to wait: 20 min more per round trip
+    assert evaluate(day, [[0, 1, 2, 3]])["periods"] == [[15, 30]]
+    day.rest_min, day.hubs = None, np.array([False, True, False, False])  # a bus station at stop 1
+    two = evaluate(day, [[0, 1], [1, 2, 3]])
+    same = [[h or np.inf for h in row] for row in two["periods"]]  # the same headways, changes not timed
+    assert two["hubs"] == [1] and two["riders"] > evaluate(day, [[0, 1], [1, 2, 3]], fixed=same)["riders"]
+    m = evaluate(day, [[0, 1, 2, 3]], fixed=[[60, np.inf]])  # a timetable with no bus after the peak
+    assert m["periods"] == [[60, None]] and m["fleet_k"] == [1, 0] and m["hubs"] == []
+    assert m["riders"] < evaluate(day, [[0, 1, 2, 3]], fixed=[[60, 60]])["riders"]
+    assert electric(20, 100, 18) and not electric(60, 180, 18)
+    one = evaluate(day, [[0, 1]])["score"]
+    day.rest_end = np.array([True, False, True, True])  # no place to wait at stop 1: a route ending there costs 10%
+    assert abs(evaluate(day, [[0, 1]])["score"] - (1 + REST_END) * one) < 1e-9
     print("ok", {k: round(v, 3) for k, v in m.items() if isinstance(v, float)}, "v3 riders", round(a["riders"]), round(b["riders"]))

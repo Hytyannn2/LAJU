@@ -7,12 +7,13 @@ set, judged at the stops a bus really serves, not by the optimisers' score:
             district too (fairness)
   coverage  people within 400 m (town) / 800 m (rural) of a stop a bus serves
   trips     the planner's own test trips (SK Kota -> KB Mall, ...)
-  shape     routes over 1.5x their quickest drive; route ends where a bus can wait and the driver rest
-  fleet     buses and bus-km a day, each route at its own headway
+  shape     routes over 1.5x their quickest drive; route ends where a bus can wait and the driver rest (kelantan.rests)
+  fleet     buses on the road per period of the day, bus-km a day, empty runs from depots, routes an e-bus can run
 
-Each network runs at its own headways and speeds: BAS.MY at its timetable (basmy.json: how often, how long one way), a
-LAJU design at what sim.evaluate runs.
-Every boarding waits half the headway, as in sim.py. Walking: kelantan.WALK_MIN_PER_KM along the straight line, at most
+Each network runs at its own headways and speeds: BAS.MY at its timetable (basmy.json: how often, how long one way, how
+many times a day from 06:30), a LAJU design at what sim.evaluate runs, per period of the day (kelantan.PERIODS); each
+test is judged in the period its trips are made. Every boarding waits half the headway, as in sim.py; a change at a hub
+of a LAJU design waits sim.TIMED_MIN (its timetable times them; BAS.MY's does not). Walking: kelantan.WALK_MIN_PER_KM along the straight line, at most
 kelantan.WALK_CAP_MIN (~880 m): farther, people ride a motorbike or get dropped off.
 
     python exam.py                                  -> self-check: "ok ..."
@@ -33,29 +34,29 @@ from scipy.spatial import cKDTree
 
 import kelantan
 import routes
-from sim import DWELL_MIN, LAYOVER_MIN, UTURN_MIN, evaluate, quickest
+from sim import DWELL_MIN, LAYOVER_MIN, TIMED_MIN, UTURN_MIN, electric, evaluate, quickest
 
 HERE = Path(__file__).resolve().parent
 TARGETS = HERE / "cache" / "exam_places.json"  # the exam's destinations, rebuilt from OSM when deleted
 BASMY = HERE / "basmy.json"  # BAS.MY Kelantan: each route's stops in order and how often it runs
-TESTS = (  # destination kinds, minutes door to door, "nearest" = the one closest to home / "any" of them: knobs
-    ("school", ("school",), 30, "nearest"),
-    ("clinic or hospital", ("clinic", "hospital"), 45, "any"),
-    ("mall or market", ("mall", "marketplace"), 45, "any"),
-    ("rail station", ("rail",), 45, "any"),
-    ("park, stadium or beach", ("park", "stadium", "beach"), 60, "any"),
-    ("town", ("town",), 45, "nearest"),
+TESTS = (  # destination kinds, minutes door to door, "nearest" = the one closest to home / "any" of them, the period of the
+    # day it is judged in (kelantan.PERIODS: pupils go in the morning peak, outings in the evening peak): knobs
+    ("school", ("school",), 30, "nearest", 0),
+    ("clinic or hospital", ("clinic", "hospital"), 45, "any", 1),
+    ("mall or market", ("mall", "marketplace"), 45, "any", 1),
+    ("rail station", ("rail",), 45, "any", 1),
+    ("park, stadium or beach", ("park", "stadium", "beach"), 60, "any", 2),
+    ("town", ("town",), 45, "nearest", 1),
 )
+TRIP_PERIOD = 1  # the planner's test trips: in the day
 TRIPS = (  # the planner's test trips (2026-10-10 / 18): (from, lat, lng), (to, lat, lng), placed by their OSM names
     (("SK Kota", 6.085193, 102.233006), ("KB Mall", 6.117549, 102.241033)),
     (("SK Kota", 6.085193, 102.233006), ("AEON Mall Kota Bharu", 6.110255, 102.230746)),
     (("Wakaf Che Yeh", 6.08436, 102.238398), ("HRPZ II", 6.124773, 102.245687)),
 )
 TOWN_PER_KM2, STOP_M = kelantan.TOWN_PER_KM2, kelantan.STOP_M  # town / rural, and the walk that counts as covered
-REST = ("bus_station", "rail", "mall", "hospital", "university", "college", "stadium")  # a bus can wait there
-REST_M = 300
 MAX_CHANGES = 2
-SERVICE_H = 18        # 6 am to 12 am (planner, 2026-10-28)
+FIRST_BUS = 6.5  # BAS.MY's routes first leave at 06:30 (bas.my timetables, 2026-10-29)
 REACH_M = 1000 * kelantan.WALK_CAP_MIN / kelantan.WALK_MIN_PER_KM
 
 
@@ -121,19 +122,21 @@ def expand(p, net, rs, express=None):
     return np.array(list(index), int), seqs, fwd, bwd
 
 
-def transit(seqs, fwd, bwd, heads, S, changes=MAX_CHANGES):
+def transit(seqs, fwd, bwd, heads, S, changes=MAX_CHANGES, hubs=()):
     """Quickest minutes between every two of S stops, at most `changes` changes, and the changes each takes: (T, C).
-    Every boarding waits half its route's headway. The graph has a copy of every stop per number of buses boarded so
-    far, so a trip that would need more changes has no path at all (sim.py instead drops a trip whose quickest path
-    needs too many; here a slower path with fewer changes still counts)."""
+    Every boarding waits half its route's headway (inf: the route does not run), a change at one of the stops `hubs`
+    at most TIMED_MIN. The graph has a copy of every stop per number of buses boarded so far, so a trip that would need
+    more changes has no path at all (sim.py instead drops a trip whose quickest path needs too many; here a slower path
+    with fewer changes still counts)."""
     L, M = changes + 1, sum(len(s) for s in seqs)
+    timed = np.isin(np.arange(S), list(hubs))
     rows, cols, w, base, start = [], [], [], (L + 1) * S, 0
     for s, f, b, h in zip(seqs, fwd, bwd, heads):
-        for l in range(1, L + 1):
+        for l in range(1, L + 1 if np.isfinite(h) else 1):
             node = base + (l - 1) * M + start + np.arange(len(s))
             rows += [(l - 1) * S + s, node, node[:-1], node[1:]]  # board, alight, ride out, ride back
             cols += [node, l * S + s, node[1:], node[:-1]]
-            w += [np.full(len(s), h / 2), np.full(len(s), 1e-9), f, b]
+            w += [np.where(timed[s] & (l > 1), min(TIMED_MIN, h / 2), h / 2), np.full(len(s), 1e-9), f, b]
         start += len(s)
     G = coo_matrix((np.concatenate(w), (np.concatenate(rows), np.concatenate(cols))), shape=(base + L * M,) * 2).tocsr()
     T, C = np.full((S, S), np.inf), np.zeros((S, S), np.int8)
@@ -161,21 +164,32 @@ def _pairs(A, B, metres=REACH_M):
     return i, j, _walk(np.hypot(*(A[i] - B[j]).T)) if len(i) else np.zeros(0)
 
 
-def exam(p, net, rs, heads, express=None, timetable=None):
-    """The exam of route set rs (key-stop indices), route i running every heads[i] minutes and, where its real
-    timetable[i] gives them, taking "minutes" one way and running "trips" a day each way. -> dict (see report)."""
+def exam(p, net, rs, heads, express=None, timetable=None, hubs=()):
+    """The exam of route set rs (key-stop indices), route i running every heads[i][k] minutes in period k
+    (kelantan.PERIODS; one number = all day; inf = no bus) and, where its real timetable[i] gives them, taking
+    "minutes" one way; changes at the key stops `hubs` are timed. -> dict (see report)."""
     R = kelantan.roads()
+    hours = np.array([b - a for _, a, b in kelantan.PERIODS], float)
+    heads = np.array(heads, float).reshape(len(rs), -1) * np.ones(len(hours))
     v, seqs, fwd, bwd = expand(p, net, rs, express)
     for i, t in enumerate(timetable or []):
         if t.get("minutes"):  # traced routes keep their roads but run at their real speed (tracing adds U-turns: straight())
             fwd[i], bwd[i] = fwd[i] * t["minutes"] / fwd[i].sum(), bwd[i] * t["minutes"] / bwd[i].sum()
     SP, S = R["P"][v], len(v)
-    T, C = transit(seqs, fwd, bwd, heads, S)
+    timed = np.flatnonzero(np.isin(v, net["nodes"][list(hubs)]))
+    nets = {}  # period -> (T, C)
+
+    def at(k):
+        if k not in nets:
+            nets[k] = transit(seqs, fwd, bwd, heads[:, k], S, hubs=timed)
+        return nets[k]
+
     P, ppl, town, district = homes()
     hi, hs, hw = _pairs(P, SP)
     tg, out = targets(), {"access": {}, "foot": {}, "districts": {}}
     passed = {}
-    for name, kinds, limit, how in TESTS:
+    for name, kinds, limit, how, k in TESTS:
+        T, C = at(k)
         Q = np.vstack([tg.get(k, np.zeros((0, 2))) for k in kinds])
         dq, near = cKDTree(Q).query(P)
         time = np.where(dq <= REACH_M, _walk(dq), np.inf)  # on foot all the way
@@ -198,7 +212,7 @@ def exam(p, net, rs, heads, express=None, timetable=None):
     dist = cKDTree(SP).query(P)[0]
     ok = np.where(town, dist <= STOP_M[0], dist <= STOP_M[1])
     out["coverage"] = {k: float(ppl[ok & m].sum() / ppl[m].sum()) for k, m in (("town", town), ("rural", ~town), ("all", town | ~town))}
-    out["trips"] = {}
+    out["trips"], (T, C) = {}, at(TRIP_PERIOD)
     for (a, alat, alng), (b, blat, blng) in TRIPS:
         o, d = kelantan._m([alat], [alng]), kelantan._m([blat], [blng])
         _, so, wo = _pairs(o, SP)
@@ -210,15 +224,19 @@ def exam(p, net, rs, heads, express=None, timetable=None):
     quick = quickest(p)[0]
     out["crooked"] = sum(max(f.sum() / quick[r[0], r[-1]], b.sum() / quick[r[-1], r[0]]) > kelantan.MAX_DETOUR
                          for r, f, b in zip(rs, fwd, bwd))
-    rest = cKDTree(np.vstack([tg[k] for k in REST if k in tg]))
     ends = R["P"][net["nodes"][[x for r in rs for x in (r[0], r[-1])]]]
-    out["rest_ends"] = int((rest.query(ends)[0].reshape(-1, 2) <= REST_M).all(1).sum())
-    out["buses"] = sum(math.ceil((f.sum() + b.sum() + LAYOVER_MIN) / h - 0.05)  # headways are saved to 0.1 min
-                       for f, b, h in zip(fwd, bwd, heads))
-    trips = [t.get("trips") for t in timetable] if timetable else [None] * len(rs)
-    out["bus_km_day"] = sum(2 * k * (n or SERVICE_H * 60 / h) for k, h, n in zip(m["route_km"], heads, trips))
+    out["rest_ends"] = int((cKDTree(kelantan.rests()).query(ends)[0].reshape(-1, 2) <= kelantan.REST_M).all(1).sum())
+    out["rest_near"] = sum(bool(p.rest_end[r[0]] and p.rest_end[r[-1]]) for r in rs)  # within kelantan.REST_RUN
+    cycle = np.array([f.sum() + b.sum() + LAYOVER_MIN + p.rest_min[r[0]] + p.rest_min[r[-1]] for r, f, b in zip(rs, fwd, bwd)])
+    buses = np.where(np.isfinite(heads), np.ceil(cycle[:, None] / heads - 0.05), 0)  # headways are saved to 0.1 min
+    km = np.array(m["route_km"])
+    out["buses_k"] = buses.sum(0).astype(int).tolist()  # on the road in each period
+    out["buses"] = max(out["buses_k"])
+    out["bus_km_day"] = float((2 * km[:, None] * np.where(np.isfinite(heads), 60 * hours / heads, 0)).sum())
+    out["empty_km_day"] = float(sum(b * min(p.depot_km[r[0]], p.depot_km[r[-1]]) for r, b in zip(rs, buses.max(1))))
+    out["electric"] = sum(electric(k, c, hours.sum()) for k, c in zip(km, cycle))
     out["route_minutes"] = [round(float(f.sum())) for f in fwd]
-    out |= {"routes": len(rs), "stops": S}
+    out |= {"routes": len(rs), "stops": S, "hubs": len(hubs)}
     return out
 
 
@@ -232,10 +250,17 @@ def straight(p, r):
     return routes.unturn(p, out)
 
 
+def periods(t):
+    """Headway in each period (kelantan.PERIODS) of a timetable that leaves every t["headway"] min from FIRST_BUS,
+    t["trips"] times a day: the period's minutes / its departures; inf with none."""
+    dep = FIRST_BUS + np.arange(t["trips"]) * t["headway"] / 60
+    return [60 * (b - a) / k if (k := int(((dep >= a) & (dep < b)).sum())) else math.inf for _, a, b in kelantan.PERIODS]
+
+
 def load(name):
-    """(Problem, net, routes, headways, express, timetable) of the newest saved run named `name`. A network is
-    judged at the headways it was saved with, so a later change of the trip model or the rules does not change its
-    exam; if its routes no longer match those (a stop it used is gone), at what sim.evaluate runs today."""
+    """(Problem, net, routes, headways per period, express, timetable, hubs) of the newest saved run named `name`. A
+    network is judged at the headways it was saved with, so a later change of the trip model or the rules does not
+    change its exam; if its routes no longer match those (a stop it used is gone), at what sim.evaluate runs today."""
     import server
 
     d = next((x for x in (json.loads(f.read_text()) for f in sorted(server.RESULTS.glob("run-*.json"), reverse=True))
@@ -246,11 +271,12 @@ def load(name):
     rs = lk + server._routes(d, p, net, lk)
     if "timetable" in d:  # BAS.MY: its own headways and trip times, and every bus stops at every stop
         t = d["timetable"]
-        return p, net, [straight(p, r) for r in rs], [x["headway"] for x in t], None, t
+        return p, net, [straight(p, r) for r in rs], [periods(x) for x in t], None, t, []
     m = d["output"]["metrics"]
     if len(m["headway"]) != len(rs) or len(m["express"]) != len(rs):
         m = evaluate(p, rs, detail=True)
-    return p, net, rs, m["headway"], m["express"], None
+    heads = [[math.inf if h is None else h for h in x] for x in m["periods"]] if "periods" in m else m["headway"]
+    return p, net, rs, heads, m["express"], None, m.get("hubs", [])  # runs before Phase 3: one headway all day
 
 
 def save_basmy():
@@ -267,7 +293,7 @@ def save_basmy():
     f = next((f for f in server.RESULTS.glob("run-*.json") if json.loads(f.read_text())["input"]["name"] == req.name),
              server.RESULTS / f"run-{datetime.now():%Y%m%d-%H%M%S-%f}.json")  # replaces the last one
     out = server._output(p, net, [straight(p, r) for r in lk], req)
-    out["metrics"] = evaluate(p, [straight(p, r) for r in lk], detail=True, fixed=[r["headway"] for r in b])  # its timetable
+    out["metrics"] = evaluate(p, [straight(p, r) for r in lk], detail=True, fixed=[periods(r) for r in b])  # its timetable
     server._save(f, {"input": req.model_dump(), "output": out,
                      "timetable": [{k: r[k] for k in ("ref", "headway", "minutes", "trips")} for r in b]})
     print("saved", f.stem, "BAS.MY today:", len(lk), "routes")
@@ -278,10 +304,12 @@ def report(names, results):
     row = lambda label, xs: print(f"{label:<34}" + "".join(f"{x:>{w}}" for x in xs))
     row("", names)
     row("routes / stops / buses", [f"{e['routes']} / {e['stops']} / {e['buses']}" for e in results])
-    row("bus-km a day", [f"{e['bus_km_day']:,.0f}" for e in results])
+    row("buses: peak / day / eve / night", [" / ".join(map(str, e["buses_k"])) for e in results])
+    row("bus-km a day / empty from depots", [f"{e['bus_km_day']:,.0f} / {e['empty_km_day']:,.0f}" for e in results])
+    row("timed hubs / e-bus routes", [f"{e['hubs']} / {e['electric']} of {e['routes']}" for e in results])
     row("covered: town / rural / all", [" / ".join(f"{e['coverage'][k]:.0%}" for k in ("town", "rural", "all")) for e in results])
     print("can get there (on foot alone):")
-    for name, _, limit, how in TESTS:
+    for name, _, limit, how, _ in TESTS:
         row(f"  {'nearest ' if how == 'nearest' else ''}{name} {limit} min",
             [f"{e['access'][name]:.0%} ({e['foot'][name]:.0%})" for e in results])
     row("  average", [f"{np.mean(list(e['access'].values())):.0%}" for e in results])
@@ -290,6 +318,7 @@ def report(names, results):
         row(f"  {t}", [("no bus" if not math.isfinite(e["trips"][t][0]) else
                         f"{e['trips'][t][0]:.0f} min, {e['trips'][t][1]} chg") for e in results])
     row("routes over 1.5x / both ends rest", [f"{e['crooked']} / {e['rest_ends']} of {e['routes']}" for e in results])
+    row("  ends within a 5-min drive of one", [f"{e['rest_near']} of {e['routes']}" for e in results])
     print("by district, average of the access tests:")
     for d in sorted(results[0]["districts"]):
         row(f"  {d}", [f"{np.mean(list(e['districts'].get(d, {0: 0}).values())):.0%}" for e in results])
@@ -311,6 +340,10 @@ if __name__ == "__main__":
         assert abs(T[0, 2] - 26) < 1e-6 and C[0, 2] == 1  # + wait 10 + ride 6
         assert abs(T[0, 3] - 48) < 1e-6 and C[0, 3] == 2 and abs(T[3, 0] - 48) < 1e-6  # + wait 15 + ride 7, both ways
         assert np.isinf(transit(seqs, f, f, [10, 20, 30], 4, changes=1)[0][0, 3])  # 2 changes not allowed: no way
+        assert abs(transit(seqs, f, f, [10, 20, 30], 4, hubs=[1])[0][0, 2] - (5 + 5 + TIMED_MIN + 6)) < 1e-6  # timed at 1
+        assert np.isinf(transit(seqs, f, f, [10, math.inf, 30], 4)[0][0, 2])  # route B does not run then
+        assert periods({"headway": 60, "trips": 13}) == [60, 60, 60, math.inf]  # 06:30 ... 18:30: none at night
+        assert periods({"headway": 240, "trips": 3}) == [180, 210, math.inf, math.inf]  # 06:30 | 10:30, 14:30
         T, C = transit(seqs + [np.array([0, 1, 2, 3])], f + [np.array([5.0, 6.0, 7.0])], f + [np.array([5.0, 6.0, 7.0])],
                        [10, 20, 30, 40], 4)
         assert abs(T[0, 3] - 38) < 1e-6 and C[0, 3] == 0  # the through route (wait 20 + 18) beats changing twice

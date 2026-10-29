@@ -30,6 +30,11 @@ type Metrics = {
   boardings?: number;
   covered?: number;
   budget?: number;
+  periods?: (number | null)[][]; // Phase 3 (2026-10-29): per route, minutes between buses in each period (null = none then)
+  fleet_k?: number[]; // buses on the road in each period
+  hubs?: number[]; // key stops where changes are timed (buses meet)
+  empty_km_day?: number; // empty runs from depots and back
+  electric?: boolean[]; // an electric bus can run the route on its range plus charging in layovers
 };
 type Sumo = {
   congestion: { path: LatLng[]; c: number }[];
@@ -49,6 +54,7 @@ export type Design = {
   trips: number;
   dosm_year: string;
   planner_snap_m: number[];
+  periods?: [string, number, number][]; // name, from, to (hour of the day)
   sumo?: Sumo;
 };
 type Run = {
@@ -489,6 +495,12 @@ export default function Designer() {
                 </select>
               </label>
               {form.optimizer !== "baseline" && <Num label="Search time (s)" value={form.seconds} min={1} max={600} onChange={(v) => set({ seconds: v })} />}
+              <label className="flex flex-col gap-1">
+                <span>
+                  Buses to share: <b>{form.max_buses || 64}</b> <span className="text-neutral-500">(BAS.MY Kelantan has 64)</span>
+                </span>
+                <input type="range" min={16} max={400} value={form.max_buses || 64} onChange={(e) => set({ max_buses: Number(e.target.value) })} />
+              </label>
               <button className="rounded bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50" disabled={!!busy || !view || training} onClick={designNetwork}>
                 {training ? "Training… pause it to design again" : "Design network for this map view"}
               </button>
@@ -524,7 +536,6 @@ export default function Designer() {
                   is worth an extra bus. A trip needing 3 or more changes counts as no bus: riders would not make it.
                 </p>
                 <Num label="Longest route, one way (min, 0 = none)" value={form.max_route_min} min={0} max={600} onChange={(v) => set({ max_route_min: v })} />
-                <Num label="Budget: max buses (0 = none)" value={form.max_buses} min={0} max={5000} onChange={(v) => set({ max_buses: v })} />
                 <Num label="Budget: max route km (0 = none)" value={form.max_km} min={0} max={10000} onChange={(v) => set({ max_km: v })} />
               </div>
             </details>
@@ -674,6 +685,13 @@ export default function Designer() {
                 .join(", ")})`}{" "}
               · <b>{m.total_km.toFixed(1)} km</b> of routes · {design.stops.length} stops
             </p>
+            {m.fleet_k && design.periods && (
+              <p>
+                On the road: {design.periods.map(([name, a, b], k) => `${m.fleet_k![k]} ${name} (${a}-${b})`).join(" · ")} · changes
+                timed at <b>{m.hubs?.length ?? 0} hubs</b> · {Math.round(m.empty_km_day ?? 0).toLocaleString()} km a day empty from
+                depots · {m.electric?.filter(Boolean).length ?? 0} routes an electric bus can run
+              </p>
+            )}
             <div className="flex flex-col gap-2 border-y border-neutral-800 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-neutral-400">
@@ -729,6 +747,9 @@ export default function Designer() {
                 Moving buses
               </label>
             </div>
+            {design.periods && m.periods && (
+              <p className="text-neutral-500">Bus every … min: {design.periods.map(([name, a, b]) => `${name} ${a}-${b}`).join(" / ")}.</p>
+            )}
             <p className="text-neutral-500 print:hidden">
               Tick a route to show it on the map. Each moving yellow dot is a bus, as often as its route runs; 1 s on screen =
               1 min. &quot;Lock&quot; keeps a route as it is in the next design (dashed on the map).
@@ -764,7 +785,8 @@ export default function Designer() {
                       </span>{" "}
                       ·{" "}
                       <span className="text-neutral-400">
-                        bus every {m.headway[i]} min, {m.buses[i]} buses · peak {m.peak_hour_load[i]} pax/h
+                        bus every {m.periods ? m.periods[i].map((h) => h ?? "–").join(" / ") : m.headway[i]} min, {m.buses[i]} buses · peak{" "}
+                        {m.peak_hour_load[i]} pax/h
                       </span>
                     </span>
                     <button

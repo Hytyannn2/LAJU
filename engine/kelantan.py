@@ -88,8 +88,9 @@ ALIASES = {"pasir putih": "pasir puteh", "lojing": "gua musang"}  # KPM spelling
 # by their "trips") by size and by road minutes (gravity, exp(-beta x minutes)), beta fitted so the purpose's mean trip
 # takes `minutes`. Before, one beta spread every trip over the 150 key stops of the whole state and no trip could stay
 # inside a key stop's area: 63% took over a 30-min drive (2026-10-28). The shares of out and back trips in each period
-# of the day (PERIODS) are for Phase 3's frequencies. All planning assumptions until a household survey exists.
-PERIODS = ("6-9 morning peak", "9-16 day", "16-19 evening peak", "19-24 night")
+# of the day (PERIODS) set each route's buses per period (sim._share, Phase 3). All planning assumptions until a
+# household survey exists.
+PERIODS = (("morning peak", 6, 9), ("day", 9, 16), ("evening peak", 16, 19), ("night", 19, 24))  # service 6 am - 12 am
 PURPOSES = {  # name: (out trips a day per resident, mean minutes, out shares per period, back shares per period)
     "work": (None, 20, (0.75, 0.20, 0.05, 0.0), (0.0, 0.15, 0.65, 0.20)),      # rate: WORKERS
     "school": (None, 10, (0.95, 0.05, 0.0, 0.0), (0.0, 0.60, 0.40, 0.0)),      # rate: KPM's pupils in the district
@@ -122,13 +123,22 @@ CAPTIVE = {"work": 0.1, "school": 0.6, "study": 0.3, "health": 0.3, "shop": 0.15
                            # elderly patients, students, foreign workers): assumptions
 CAR_FACTOR = 0.8     # a motorbike or car takes 0.8x the bus's minutes on a road (ROADS are bus speeds)
 DRIVE_ACCESS_MIN = 2  # to and from where it is parked, each end
-BUS_ASC = 315.0      # felt minutes the bus loses to a motorbike before any minute counts: with it BAS.MY's own 16 routes at
+BUS_ASC = 301.1      # felt minutes the bus loses to a motorbike before any minute counts: with it BAS.MY's own 16 routes at
                      # their timetable carry 2,800 boardings a day, as BAS.MY reports (84,000 a month, Q4 2025; 2026-10-29).
                      # That large: in Kelantan the motorbike wins ~99.9% of trips today
 BUSES = 64           # buses when the planner sets none: what BAS.MY owns in Kelantan (2026)
 COVER_WEIGHT = 0.03  # a person within STOP_M of a served stop counts as this many daily riders: "coverage first", the
                      # planner's pick (2026-10-29) from GA 5-min designs on 64 buses: 0 -> 6,316 riders a day, 20% of
                      # people near a stop; 0.01 -> 4,932, 25%; 0.03 -> 4,722, 28% and the best access tests
+# Route ends and hubs (brain v2 Phase 3, 2026-10-29). A route ends only where a bus can turn, wait and its driver rest
+# (planner, 2026-10-28): its bus drives on empty to the nearest rest place, waits there and comes back, every round trip;
+# a route end farther than REST_RUN from one costs sim.REST_END.
+REST_KINDS = ("bus_station", "rail", "mall", "hospital", "university", "college", "stadium")  # places with room to wait
+HUB_KINDS = ("bus_station", "rail")  # changes there are timed (sim.TIMED_MIN); bus stations are also where buses sleep
+REST_M = 300         # a stop this near a rest place is at it (the exam; a station's stop is a hub)
+REST_RUN = 10        # minutes there and back a route end may lie from a rest place (5 min each way): GA 5 min on 64 buses
+                     # with REST_M instead (2026-10-29): riders 2,907 vs 5,696, people near a stop 21% vs 25%
+BIG_PARK_M2 = 2500   # a car park this big (~100 cars) has room for a bus to wait; roundabouts let it turn
 TOWN_PER_KM2 = 1000  # a home in a population hexagon this dense is "town"
 STOP_M = (400, 800)  # town, rural: how near a stop counts as covered (planner, 2026-10-28)
 PEOPLE_NEAR_M = 485  # "people nearby" for intermediate stops: a circle as big as one population hexagon (H3, 0.74 km2)
@@ -346,6 +356,35 @@ def places():
 
 
 @lru_cache
+def rests():
+    """Where a route may end (metres (m, 2)): places with room for a bus to turn, wait and its driver rest: bus and rail
+    stations, malls, hospitals, universities, colleges, stadiums (REST_KINDS), roundabouts on bus roads and car parks of
+    BIG_PARK_M2 or more (both from OSM, cached in rests.json)."""
+    f = CACHE / "rests.json"
+    if not f.exists():
+        ring = _osm("lines", "highway IN (%s) AND (other_tags LIKE '%%\"junction\"=>\"roundabout\"%%' OR other_tags LIKE "
+                             "'%%\"junction\"=>\"circular\"%%')" % ",".join(f"'{k}'" for k in ROADS)).geometry.centroid
+        park = _osm("multipolygons", "amenity = 'parking'").geometry
+        m2 = shapely.area(shapely.transform(park.to_numpy(), lambda c: _m(c[:, 1], c[:, 0])))
+        pts = list(ring) + list(park[m2 >= BIG_PARK_M2].representative_point())
+        f.write_text(json.dumps([[p.y, p.x] for p in pts if boundary().contains(p)]))
+    pl = [(x["lat"], x["lng"]) for x in places() if x["kind"] in REST_KINDS] + json.loads(f.read_text())
+    return _m(*np.array(pl).T)
+
+
+@lru_cache
+def bases():
+    """Per road node (roads()): minutes to the nearest rest place (rests()) and back, the empty run a route that ends
+    there makes every round trip; and km from the nearest depot (a bus station: where buses sleep) and back, the empty
+    run each bus makes a day. ponytail: every bus station is a depot; the operator's real depots would replace them."""
+    R = roads()
+    near = lambda P: np.unique(cKDTree(R["P"]).query(P)[1])
+    both = lambda G, src: dijkstra(G.T, indices=src, min_only=True) + dijkstra(G, indices=src, min_only=True)
+    depots = [(x["lat"], x["lng"]) for x in places() if x["kind"] == "bus_station"]
+    return both(R["G"], near(rests())), both(R["K"], near(_m(*np.array(depots).T)))
+
+
+@lru_cache
 def districts():
     """Kelantan's districts (OSM admin level 6) with the key that matches KPM / MOH data."""
     f = CACHE / "districts.geojson"
@@ -509,10 +548,11 @@ def _gravity(T, prod, attr, minutes):
 
 @lru_cache
 def demand():
-    """Person trips a day between demand zones (zones()), every purpose, there and back: (trips (Z, Z), the part made
-    by people without a vehicle (CAPTIVE), {purpose: beta}, trip ends a day at homes per zone, at each place (places()),
-    at each job building (jobs())). Homes count the trips their people make and the trips that come to them (visits,
-    the jobs at or near home)."""
+    """Person trips a day between demand zones (zones()), every purpose, there and back, by period of the day: (trips
+    (periods, Z, Z), the part made by people without a vehicle (CAPTIVE), {purpose: beta}, trip ends a day at homes per
+    zone, at each place (places()), at each job building (jobs())). Homes count the trips their people make and the trips
+    that come to them (visits, the jobs at or near home). A purpose's out trips fall in each period (PERIODS) by its out
+    shares, the trips back by its back shares."""
     zP, zpop, T = zones()
     Z, pl = len(zP), places()
     pz = cKDTree(zP).query(_m([x["lat"] for x in pl], [x["lng"] for x in pl]))[1]
@@ -527,9 +567,9 @@ def demand():
     pupils = district_numbers()["pupils"]
     share = {k: pupils[k] / zpop[key == k].sum() for k in set(key) if k in pupils}
     avg = sum(pupils.values()) / zpop.sum()
-    trips, captive, beta = np.zeros((Z, Z), np.float32), np.zeros((Z, Z), np.float32), {}
+    trips, beta = np.zeros((2, len(PERIODS), Z, Z), np.float32), {}  # all trips, the captive part
     ends = np.zeros(Z), np.zeros(len(pl)), np.zeros(len(jn))  # homes, places, job buildings
-    for name, (rate, minutes, *_) in PURPOSES.items():
+    for name, (rate, minutes, outs, backs) in PURPOSES.items():
         if name == "work":  # doors: (zone of each, its pull, which trip ends it gets, their index there)
             prod = WORKERS * zpop
             doors = [(jz, jn, 2, np.arange(len(jn))), (pz, JOBS_PER_TRIP * pull, 1, np.arange(len(pl)))]
@@ -545,13 +585,15 @@ def demand():
         for z, w, _, _ in doors:
             np.add.at(attr, z, w)
         out, beta[name] = _gravity(T, prod, attr, minutes)
-        trips += out + out.T
-        captive += CAPTIVE[name] * (out + out.T)
+        for k, (a, b) in enumerate(zip(outs, backs)):
+            x = a * out + b * out.T
+            trips[0, k] += x
+            trips[1, k] += CAPTIVE[name] * x
         ends[0][:] += 2 * out.sum(1)  # out and back home
         into = out.sum(0)
         for z, w, e, i in doors:
             np.add.at(ends[e], i, 2 * into[z] * w / np.maximum(attr[z], 1e-30))
-    return trips, captive, beta, *ends
+    return trips[0], trips[1], beta, *ends
 
 
 def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0, max_km=0.0, max_route_min=0.0, spots=None):
@@ -685,19 +727,18 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
     # (score v3). A planner stop's own "demand" (the trips a day it makes, e.g. a new housing estate) goes to and from the
     # residents around it as visits would; before 2026-10-29 it was read as residents.
     dz = np.flatnonzero((dP >= _m([s], [w])[0]).all(1) & (dP <= _m([n], [e])[0]).all(1))
-    M = np.zeros((K, len(dz)), np.float32)
-    M[cKDTree(zP).query(dP[dz])[1], np.arange(len(dz))] = 1
-    od, cap = ((M @ x[np.ix_(dz, dz)] @ M.T).astype(float) for x in (dod, dcap))
-    np.fill_diagonal(od, 0)
-    np.fill_diagonal(cap, 0)
+    M = csr_matrix((np.ones(len(dz)), (cKDTree(zP).query(dP[dz])[1], np.arange(len(dz)))), shape=(K, len(dz)))
+    od, cap = (np.stack([(M @ (M @ x[np.ix_(dz, dz)]).T).T for x in X]).astype(float) for X in (dod, dcap))  # per period
+    od[:, np.arange(K), np.arange(K)] = cap[:, np.arange(K), np.arange(K)] = 0
     for z, d in zip(planner_zone[: len(forced)], [float(x.get("demand", 0)) for x in forced]):
         g = zpop * np.exp(-beta["other"] * np.where(np.isfinite(T[:, z]), T[:, z], np.inf))
         g[z] = 0
         g *= d / 2 / max(g.sum(), 1e-9)
-        od[:, z] += g
-        od[z, :] += g
-        cap[:, z] += CAPTIVE["other"] * g
-        cap[z, :] += CAPTIVE["other"] * g
+        for k, (a, b) in enumerate(zip(*PURPOSES["other"][2:])):  # visits: there by its out shares, back by its back shares
+            od[k, :, z] += a * g
+            od[k, z, :] += b * g
+            cap[k, :, z] += CAPTIVE["other"] * a * g
+            cap[k, z, :] += CAPTIVE["other"] * b * g
 
     # 6. Coverage (score v3): a home is covered while any stop within STOP_M (400 m in town, 800 m rural) has a bus: a
     # key stop on a route, or a stop between key stops on a link a bus stops on. Homes with the same stops near form
@@ -719,13 +760,21 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
     cover_cells = csr_matrix((np.ones(len(rows)), (rows, np.concatenate([np.asarray(c, int) for c in cells] or [[]]))),
                              shape=(len(cells), K + len(links)))
 
-    p = Problem(time=time, od=od, xy=np.column_stack([R["lng"][nodes], R["lat"][nodes]]), km=km, min_len=2, max_len=15,
+    # 7. Route ends, hubs and depots (Phase 3): the empty run from each key stop to the nearest rest place and back, the
+    # key stops at a bus or rail station (timed transfers), the empty run from the nearest depot and back.
+    rest_min, depot_km = bases()
+    rest_end = rest_min[nodes] <= REST_RUN
+    hub_kinds = [x for x in places() if x["kind"] in HUB_KINDS]
+    hubs = cKDTree(_m([x["lat"] for x in hub_kinds], [x["lng"] for x in hub_kinds])).query(zP)[0] <= REST_M
+
+    p = Problem(time=time, od=od.sum(0), xy=np.column_stack([R["lng"][nodes], R["lat"][nodes]]), km=km, min_len=2, max_len=15,
                 headways=tuple(headways), mids=n_mid, walk=walk, walk_save=walk_save, walk_weight=WALK_WEIGHT, vot=VOT_RM_H / 60, unserved_cost=UNSERVED_RM,
-                transfer_min=TRANSFER_MIN, max_transfers=MAX_TRANSFERS,
+                transfer_min=TRANSFER_MIN, max_transfers=MAX_TRANSFERS, service_hours=sum(b - a for _, a, b in PERIODS),
                 max_buses=max_buses, max_km=max_km, max_route_min=max_route_min, max_detour=MAX_DETOUR, uturn=uturn,
-                od_captive=cap, asc=BUS_ASC, budget=max_buses or BUSES, cover_cells=cover_cells,
+                od_captive=cap.sum(0), asc=BUS_ASC, budget=max_buses or BUSES, cover_cells=cover_cells,
                 cover_pop=np.array(list(cells.values())), cover_links=np.array(links, int).reshape(-1, 2),
-                cover_weight=COVER_WEIGHT)
+                cover_weight=COVER_WEIGHT, period_h=tuple(b - a for _, a, b in PERIODS), od_k=od, captive_k=cap,
+                hubs=hubs, rest_min=rest_min[nodes], rest_end=rest_end, depot_km=depot_km[nodes])
     road = np.where(np.isfinite(T), T, routes.quickest(p)[0])  # T stops at 120 min; beyond, the bus's own quickest
     p.drive = CAR_FACTOR * road + 2 * DRIVE_ACCESS_MIN
 
@@ -898,9 +947,11 @@ if __name__ == "__main__":
     assert size["AEON Mall Kota Bharu"] > 5 * size["Bazar Tuan Padang"], "malls differ by their footprint"
     kinds = Counter(x["kind"] for x in places())
     assert kinds["rail"] >= 20 and kinds["airport"] >= 1 and kinds["gateway"] == len(GATEWAYS), kinds
-    assert all(abs(sum(o) - 1) < 1e-9 and abs(sum(b) - 1) < 1e-9 for _, _, o, b in PURPOSES.values()), "period shares"
+    assert all(abs(sum(o) - 1) < 1e-9 and abs(sum(b) - 1) < 1e-9 and len(o) == len(b) == len(PERIODS)
+               for _, _, o, b in PURPOSES.values()), "period shares"
     dP, dpop, T = zones()
     trips, captive, beta, *_ = demand()
+    trips = trips.sum(0)  # the day's, all periods
     far = float(trips[T > 30].sum() / trips.sum())
     print(f"demand: {len(dP)} zones, {trips.sum():,.0f} person trips a day ({trips.sum() / dpop.sum():.1f} per person), "
           f"{far:.0%} over a 30-min drive; beta per purpose {({k: round(v, 3) for k, v in beta.items()})}; places {dict(kinds)}")

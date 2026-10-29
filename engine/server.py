@@ -105,6 +105,7 @@ def _output(p, net, rs, req):
     return kelantan.describe(p, net, rs, m.get("express")) | {
         "metrics": m,
         "headways": list(req.headways), "max_route_min": req.max_route_min, "service_hours": p.service_hours,
+        "periods": [list(x) for x in kelantan.PERIODS],  # (name, from, to hour): metrics["periods"] has a headway for each
         "people": net["people"], "trips": net["trips"], "dosm_year": net["dosm_year"],
         "planner_snap_m": net["planner_snap_m"],
         "model": {"lat": p.xy[:, 1].round(6).tolist(), "lng": p.xy[:, 0].round(6).tolist(), "od": p.od.round(2).tolist()},

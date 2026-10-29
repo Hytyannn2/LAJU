@@ -218,7 +218,8 @@ export default function MapView({
                     <div key={i} className="mt-1">
                       <span className="mr-1 inline-block h-2.5 w-2.5 rounded-full" style={{ background: colors[i % colors.length] }} />
                       <b>Route {i + 1}</b> ({names.get(r.stops[0])} → {names.get(r.stops[r.stops.length - 1])}): stop {at.join(" and ")} of{" "}
-                      {r.stops.length} · a bus every {design.metrics.headway[i]} min, {design.metrics.buses[i]} buses on the route
+                      {r.stops.length} · a bus every {design.metrics.periods?.[i].map((h) => h ?? "–").join(" / ") ?? design.metrics.headway[i]} min
+                      {design.periods && ` (${design.periods.map(([name]) => name).join(" / ")})`}, {design.metrics.buses[i]} buses on the route
                     </div>
                   );
                 })}

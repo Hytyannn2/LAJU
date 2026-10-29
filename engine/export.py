@@ -1,6 +1,7 @@
 """Exports of a saved design: GeoJSON (opens in QGIS) and GTFS (the standard transit feed; buses are route_type 3).
 
-GTFS trips are frequency-based: one template trip per route direction, repeated every headway from 06:00.
+GTFS trips are frequency-based: one template trip per route direction, repeated every headway from 06:00, or in each
+period of the day at that period's headway (out["periods"], metrics["periods"]; none where the route does not run).
 Stop times are spread along each route in proportion to road distance.
 """
 import csv
@@ -69,8 +70,9 @@ def gtfs(out, run_id, today=None):
             files["trips.txt"].append([rid, "daily", tid, str(d), tid])
             files["stop_times.txt"] += [[tid, hms(START_S + t), hms(START_S + t), sid, str(k + 1)]
                                         for k, (sid, t) in enumerate(zip(seq, secs))]
-            files["frequencies.txt"].append([tid, hms(START_S), hms(START_S + out.get("service_hours", 16) * 3600),
-                                             str(int(m["headway"][i] * 60)), "0"])
+            spans = ([(a * 3600, b * 3600, h) for (_, a, b), h in zip(out["periods"], m["periods"][i]) if h]
+                     if "periods" in m else [(START_S, START_S + out.get("service_hours", 16) * 3600, m["headway"][i])])
+            files["frequencies.txt"] += [[tid, hms(a), hms(b), str(int(h * 60)), "0"] for a, b, h in spans]
             files["shapes.txt"] += [[tid, lat, lng, str(k + 1)] for k, (lat, lng) in enumerate(path)]
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -96,4 +98,8 @@ if __name__ == "__main__":
     assert [x["arrival_time"] for x in st[:3]] == ["06:00:00", "06:05:00", "06:10:00"], st[:3]
     assert [x["stop_id"] for x in st[3:]] == ["c", "b", "a"] and st[4]["arrival_time"] == "06:05:00"
     assert "R1,laju,1,A - C,3" in z.read("routes.txt").decode()
+    out["periods"], out["metrics"]["periods"] = [["peak", 6, 9], ["day", 9, 16], ["night", 19, 24]], [[10, 30, None]]
+    fq = list(csv.DictReader(io.TextIOWrapper(zipfile.ZipFile(io.BytesIO(gtfs(out, "test"))).open("frequencies.txt"))))
+    assert [(x["start_time"], x["end_time"], x["headway_secs"]) for x in fq[:2]] == [("06:00:00", "09:00:00", "600"),
+                                                                                     ("09:00:00", "16:00:00", "1800")], fq
     print("ok", z.namelist())

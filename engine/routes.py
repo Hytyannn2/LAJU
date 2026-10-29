@@ -2,7 +2,9 @@
 
 baseline(): busiest unserved trip first, served by its quickest path. The benchmark everything else must beat.
 evolve():   genetic algorithm over whole route sets (Phase 4), operators after Mumford (2013):
-            crossover alternates routes between parents favouring new stops, mutation grows/shrinks route ends.
+            crossover alternates routes between parents favouring new stops, mutation grows/shrinks route ends;
+            where the problem says where routes may end (p.rest_end), new routes run between such stops and a route
+            grows to one along the quickest road or shrinks back to one.
             Runs until the caller stops asking: ga() gives it a time limit, server.py trains until the planner pauses.
 """
 import random
@@ -40,6 +42,12 @@ def trim(p, r):
     return r[: p.max_len]
 
 
+def settle(p, r):
+    """Route r cut back at both ends to stops where a route may end (p.rest_end), if at least min_len stops remain."""
+    k = [i for i, s in enumerate(r) if p.rest_end is None or p.rest_end[s]]
+    return r[k[0]: k[-1] + 1] if k and k[-1] - k[0] + 1 >= p.min_len else r
+
+
 def baseline(p, n_routes, locked=()):
     D, pred = quickest(p)
     left = (p.od + p.od.T) * np.isfinite(D)
@@ -74,14 +82,16 @@ def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=()):
     D, pred = quickest(p)
     nb = [[int(j) for j in np.flatnonzero(np.isfinite(p.time[i])) if j != i] for i in range(n)]
     weight = (p.od.sum(0) + p.od.sum(1) + 1e-9).tolist()
+    rest = [] if p.rest_end is None else [int(i) for i in np.flatnonzero(p.rest_end)]
+    ends = rest if len(rest) >= 2 else range(n)
 
     def new_route():
         while True:
-            i, j = rng.choices(range(n), weights=weight, k=2)
+            i, j = rng.choices(ends, weights=[weight[x] for x in ends], k=2)
             if i != j and np.isfinite(D[i, j]):
                 r = unturn(p, path(pred, i, j))
                 k = rng.randrange(len(r) - p.max_len + 1) if len(r) > p.max_len else 0
-                return trim(p, r[k:])
+                return settle(p, trim(p, r[k:]))
 
     def fill(rs):
         rs = [list(r) for r in rs][:free]
@@ -106,12 +116,19 @@ def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=()):
         elif roll < 0.6 and len(r) < p.max_len:
             if rng.random() < 0.5:
                 r.reverse()
-            opts = [s for s in nb[r[-1]] if s not in r and (len(r) < 2 or (r[-2], r[-1], s) not in p.uturn)]
-            covered = {s for x in locked + rs for s in x}
-            if opts:
-                r.append(rng.choice([s for s in opts if s not in covered] or opts))
+            if rest:  # on to a nearby stop where a route may end (the nearest of 3 picked at random), by the quickest road
+                opts = [s for s in rest if s not in r and np.isfinite(D[r[-1], s])]
+                ext = path(pred, r[-1], min(rng.sample(opts, min(3, len(opts))), key=lambda s: D[r[-1], s]))[1:] if opts else r
+                if not set(ext) & set(r):
+                    rs[k] = settle(p, trim(p, unturn(p, r + ext)))
+            else:
+                opts = [s for s in nb[r[-1]] if s not in r and (len(r) < 2 or (r[-2], r[-1], s) not in p.uturn)]
+                covered = {s for x in locked + rs for s in x}
+                if opts:
+                    r.append(rng.choice([s for s in opts if s not in covered] or opts))
         elif len(r) > p.min_len:
             r.pop(0 if rng.random() < 0.5 else -1)
+            rs[k] = settle(p, r)
         return rs
 
     def fit(rs):
@@ -166,4 +183,9 @@ if __name__ == "__main__":
 
     p.max_route_min = 9  # three 3-minute links
     assert trim(p, [0, 1, 2, 3, 4]) == [0, 1, 2, 3] and all(len(r) <= 4 for r in baseline(p, 4))
+    p.max_route_min, p.rest_end = 0, np.isin(np.arange(n), [0, 4, 12, 20, 24])  # routes may end at the corners, centre
+    assert settle(p, [1, 0, 5, 10, 11, 12, 13]) == [0, 5, 10, 11, 12]
+    gen = evolve(p, 4)
+    rest = [next(gen)[0][1] for _ in range(30)][-1]
+    assert all(p.rest_end[r[0]] and p.rest_end[r[-1]] for r in rest), rest
     print("ok baseline", round(sb, 3), "ga", round(sg, 3), "training", round(best[0], 3), "->", round(best[-1], 3))

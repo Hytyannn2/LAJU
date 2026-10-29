@@ -1,6 +1,7 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-29 (brain v2 in section 9: Phase 0 the exam, 1 who travels where, 2 riders choose; git repo since
+Last updated: 2026-10-29 21:10 (brain v2 in section 9: Phase 0 the exam, 1 who travels where, 2 riders choose, 3 buses by
+period of the day, timed hubs, route ends at rest places; git repo since
 2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
 minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
 in the AI's designs, live AI map, click a stop for its routes: sections 2, 4, 5, 7, 8)
@@ -70,6 +71,27 @@ Score v3 (sim._v3; Kelantan since 2026-10-29, brain v2 Phase 2): riders choose. 
   (riders + kelantan.COVER_WEIGHT x people within 400 m town / 800 m rural of a stop with a bus), x the buses the minimum
   services need beyond the budget, routes over the time cap and crooked minutes; lower is better. COVER_WEIGHT 0.03 =
   "coverage first", the planner's pick. RM 100 per unserved trip, RM 10/h and RM per bus-km are gone from it.
+  By period of the day (since 2026-10-29 evening, brain v2 Phase 3): 4 periods (kelantan.PERIODS: morning peak 6-9, day
+  9-16, evening peak 16-19, night 19-24; 18 h of service), each with its own trips (kelantan.demand: a purpose's out trips
+  by its out shares, the trips back by its back shares). Round 1 puts every period's trips on the paths at the minimum
+  service: each route's riders and busiest-hour load (sim.PEAK_HOUR 1.3x the period's average hour) per period. Each route
+  then runs a clock-face headway per period (sim.CLOCK: 5, 10, 15, 20, 30, 60, 120 min, so buses can meet), never over its
+  minimum service, never over-full; the step to a shorter headway that saves most waiting per extra bus goes first while
+  the period's buses fit the budget (sim._share), and a period with buses to spare buys only steps worth as much as the
+  last one the budget allowed in the period that ran out (one price of a bus all day: quiet hours run fewer buses,
+  "jimat"). Round 2 runs each period at its headways. A change at a hub waits sim.TIMED_MIN = 5 min, not half the
+  headway (timed transfers): a key stop within 300 m of a bus or rail station where 2+ routes meet, or any stop where 3+
+  meet (sim.HUB_ROUTES). Routes end only where a bus can turn, wait and its driver rest (kelantan.rests: bus and rail
+  stations, malls, hospitals, universities, colleges, stadiums, roundabouts on bus roads, car parks of 2,500 m2+; 227
+  places): every bus drives on empty from its route's ends to the nearest one, waits there and comes back each round trip
+  (kelantan.bases, Problem.rest_min: more buses for the same headway), and a route end more than a 5-min drive from one
+  (kelantan.REST_RUN = 10 min there and back, Problem.rest_end) multiplies the score by 1.1 (sim.REST_END). The GA's new
+  routes run between such stops, and a route grows to one along the quickest road or shrinks back to one
+  (routes.settle). Reported, not scored: each bus's run from the nearest bus station
+  (the depots: 19) and back a day (empty_km_day), and the routes an electric bus can run on 250 km plus 2 km a minute of
+  charging in its layovers (sim.electric). BAS.MY at its timetable (departures every headway from 06:30, trips a day:
+  exam.periods) times no transfers and runs no express; kelantan.BUS_ASC 301.1 (was 315) keeps its 2,800 boardings a day
+  now that it runs no night service.
 Score v2 (sim.py; Mandl and the synthetic RL cities still use it) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
   10 min since 2026-10-10, Mandl 5) + bus-km x RM per bus-km of the route's category + RM 100 per unserved trip (50 until
   2026-10-18; a trip needing 3+ changes counts as unserved since 2026-10-18, kelantan.MAX_TRANSFERS)) / trips.
@@ -449,8 +471,10 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
 =====================================================================
 8. NEXT SESSION - START HERE
 =====================================================================
-  START HERE (2026-10-29): section 9, the brain v2 plan. Phases 0 (the exam), 1 (who travels where) and 2 (riders
-  choose, score v3) are done; next is Phase 3 once the planner says go. Items 0-5 below are the v1 state it starts from.
+  START HERE (2026-10-29 21:10): section 9, the brain v2 plan. Phases 0 (the exam), 1 (who travels where), 2 (riders
+  choose, score v3) and 3 (buses by period, timed hubs, route ends at rest places) are done; next is Phase 4 (each route
+  explains itself, stability) once the planner says go. Asked them: is "a route ends within a 5-min drive of a place a
+  bus can wait" right (the strict 300 m cost half the riders)? Items 0-5 below are the v1 state it starts from.
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
@@ -497,7 +521,7 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
      "keep routes stable" penalty if planners need versions that change little.
 
 =====================================================================
-9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phases 1 and 2 on 2026-10-29, Phase 3 next)
+9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phases 1-3 on 2026-10-29, Phase 4 next)
 =====================================================================
 Why. The planner wants "the best AI public transport planning": Kelantan as dependent on public transport as Japan, not
 car-centric. Measured on the saved "Kelantan network" (v1: 382 buses, 60 routes) on 2026-10-28, the old brain optimised
@@ -649,12 +673,49 @@ training); the AI retrains once, in Phase 5, when the rules have settled, so no 
      buses) now scores against 64 buses: do not Train it until its routes or budget change.
      Known: a design check takes ~0.1 s for 60 routes (two rounds of paths, was ~0.05 s); riders the second round's
      frequencies win do not share the buses out again.
-  3. Frequency and fleet. Buses are a budget (slider, default 64). Each route's buses per period follow its riders
-     (square-root rule scaled to the budget), never below a minimum service and never over-full. Clock-face headways
-     (10/15/20/30/60 min) so buses can meet. Timed transfers at hubs (bus terminals, rail stations, stops where many
-     routes meet): a change there waits ~5 min, not half the headway. Routes end only at rest places (terminal, rail
-     station, roundabout, big car park), with a layover for the driver. Empty runs from depots. Electric buses: range
-     per charge, charging at layovers.
+  3. Frequency and fleet [x] (2026-10-29 evening). Score v3 by period of the day (section 2): 4 periods with their own
+     trips; each route a clock-face headway per period (sim.CLOCK) from the bus budget, square-root rule in whole buses,
+     one price of a bus all day, never over the minimum service or over-full (sim._share); changes at hubs wait 5 min
+     (sim.TIMED_MIN: a station's stop where 2+ routes meet, any stop where 3+ meet); routes end within a 5-min empty drive
+     of a rest place and every round trip drives there and back (kelantan.rests / bases, sim.REST_END); empty runs from
+     the nearest bus station (19, the depots) and the routes an e-bus can run are reported. The GA's new routes run between
+     such ends and grow / shrink to them (routes.settle). The exam judges each test in its period (school: morning peak;
+     parks: evening peak; the rest: day), times changes at a design's saved hubs, counts buses per period, empty runs and
+     ends within a 5-min drive of a rest place. BAS.MY's timetable runs every headway from 06:30, "trips" times a day
+     (exam.periods): no bus after ~18:30, so kelantan.BUS_ASC 315 -> 301.1 keeps its 2,800 boardings; it times no changes
+     and runs no express. GTFS: a frequency row per period. Website: "Buses to share" slider (16-400; BAS.MY 64) on the
+     Design tab; Result shows buses on the road per period, timed hubs, empty km a day, e-bus routes and each route's
+     headway per period (checked in the browser). Design check ~16 ms for 16 routes (Phase 2: 14).
+     GA 5 min, 16 routes, 64 buses, the saved network's 150 key stops (as Phase 2), then the exam:
+                                          BAS.MY today        Phase 2 design*      Phase 3 design
+       riders a day (boardings)           2,374 (2,800)       3,618 (4,284)        5,696 (7,952)
+       buses on the road peak/day/eve/night  49 / 52 / 38 / 0  81 all day          64 all day
+       people near a stop (exam)          31%                 27%                  25%
+       average of the 6 access tests      26%                 32%                  30%
+       clinic or hospital, 45 min         34%                 43%                  40%
+       mall or market, 45 min             18%                 33%                  27%
+       nearest town, 45 min               14%                 19%                  22%
+       planner's 3 test trips             all by bus          none                 Wakaf Che Yeh -> HRPZ II 59 min, 1 chg
+       route ends: 5-min drive / 300 m    12 / 8 of 16        - / 1 of 16          16 / 1 of 16
+       timed hubs                         0                   0                    6
+       bus-km a day / empty from depots   15,330 / 42         30,153 / 897         26,732 / 604
+       (* riders by Phase 2's rules; the exam at its saved headways, with the empty runs to rest places it now pays: 81
+       buses, not 64)
+     Route-end rule, GA 5 min each, same setup (riders a day, people near a stop, timed hubs): ends only by an empty run,
+     no limit: 4,282, 26%, 0 (4 routes 15-26 min empty there and back); within 300 m of a rest place (33 of 150 key stops
+     qualify): 2,907, 21%, 3; the same with a 60-min minimum service everywhere: 2,741, 21%, 6 (on the road 63 / 62 / 64 /
+     55); within a 5-min drive (now): 5,696, 25%, 6. Ends at rest places pull routes together, which makes the hubs.
+     What more buses buy (the same Phase 3 routes, the budget changed): 64 buses: every route at its minimum service all
+     day; 100: 6,906 riders, on the road 92 / 77 / 100 / 70 (peak / day / evening / night), 3 routes every 15 min at a
+     peak; 150: 8,393 riders, 12 routes every 15 min or better at the peaks.
+     -> With BAS.MY's buses: 2.4x its riders and better access (30% vs 26%), every route ending where a bus can wait, 6
+     hubs; but fewer people near a stop (25% vs 31%) and the Kota Bharu test trips unserved (BAS.MY runs all 16 routes
+     from the Kota Bharu bus station). At 64 buses the minimum services (30 min town, 60 between towns) of 16 routes take
+     every bus: no peak / off-peak split and no 15-min corridor until ~100 buses or fewer, shorter routes. Phase 5 (the AI
+     trained on these rules) is for the rest.
+     Known: a hub times every change there (a real timetable can time a route at about two hubs); the map does not draw
+     the empty run to the rest place; depots = bus stations; one GA run of 5 min is noisy (a point or two). Saved runs:
+     "Phase 3: 64 buses" and the rule tests "Phase 3 test: ...".
   4. Explanations and stability. Each route says why it exists (riders, the trips it makes direct, who loses what
      without it) and its role (trunk: a bus every 15 min or better / feeder / coverage). The master network keeps a
      route unless changing it gains enough.
