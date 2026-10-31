@@ -489,6 +489,25 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
   today" is BAS.MY's official timetable (exam.basmy), kelantan.BUS_ASC 323.3, and the GPS logger runs in its own window
   (section 3). Let it collect a week or two, then read real speeds and delays from engine/cache/gps. To run it on a
   Raspberry Pi instead of the laptop: RASPBERRY_PI.txt (planned, parked by the planner on 2026-10-31).
+  Raspberry Pi BOM (bill of materials; rough Malaysian prices, check Cytron (cytron.io, the official reseller) or its
+  Shopee store before buying):
+    Option A, enough for the GPS logger (recommended)
+      #  item                                                        qty   about RM   why
+      1  Raspberry Pi Zero 2 W                                         1    85-100    the computer, Wi-Fi built in
+      2  official Raspberry Pi micro-USB power supply, 5 V 2.5 A       1    35-45     a weak charger makes it crash
+      3  microSD card 32 GB, SanDisk or Samsung (A1, Class 10)         1    20-30     holds the system and the data
+      4  case for the Pi Zero 2 W                                      1    10-20     protection
+      5  USB microSD card reader, only if the laptop has no SD slot    1    10-15     to write the card once
+         total                                                              150-195   (+10-15 with the reader)
+    Option B, sturdier, with a LAN port
+      1  Raspberry Pi 4 Model B 2 GB                                   1    200-230
+      2  official Raspberry Pi USB-C power supply, 15 W                1    40-50
+      3  microSD card 32 GB, SanDisk or Samsung (A1, Class 10)         1    20-30
+      4  case for the Pi 4                                             1    20-30
+      5  LAN cable, optional (steadier than Wi-Fi)                     1    5-10
+      6  USB microSD card reader, only if the laptop has no SD slot    1    10-15
+         total                                                              280-340   (+15-25 with the cable and reader)
+    Not needed: monitor, keyboard, mouse (it is set up from the laptop).
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
