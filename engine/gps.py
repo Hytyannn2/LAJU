@@ -3,11 +3,13 @@
 hour and road, delays against the timetable, buses really in service. Standard library only, so it runs for weeks in
 its own window; a sleeping laptop or a dropped connection leaves gaps.
 
-    python gps.py          -> logs until its window is closed (restarting appends)
+    python gps.py          -> logs until its window is closed (restarting appends; a second copy exits)
+    Start GPS logger.bat   -> the same by double-click, in its own minimized window (the LAJU folder)
     python gps.py --test   -> self-check: "ok ..."
 """
 import csv
 import datetime
+import socket
 import struct
 import sys
 import time
@@ -17,6 +19,7 @@ from pathlib import Path
 FEED = "https://api.data.gov.my/gtfs-realtime/vehicle-position/mybas-kota-bharu"
 OUT = Path(__file__).resolve().parent / "cache" / "gps"
 EVERY_S = 30
+LOCK_PORT = 47613  # one logger at a time: the one holding this local port
 COLUMNS = ("bus", "plate", "trip", "route", "direction", "lat", "lng", "bearing", "speed_ms", "stop", "status", "occupancy",
            "time")
 
@@ -67,6 +70,11 @@ def buses(feed):
 
 
 def main():
+    lock = socket.socket()
+    try:
+        lock.bind(("127.0.0.1", LOCK_PORT))
+    except OSError:
+        sys.exit("The GPS logger is already running (another window). Close this one.")
     OUT.mkdir(parents=True, exist_ok=True)
     seen = {}  # bus -> time of its last report written
     while True:

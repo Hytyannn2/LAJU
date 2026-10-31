@@ -156,8 +156,8 @@ own C++ if profiling shows a Python hotspot numpy/scipy cannot fix (none so far:
                  --basmy saves BAS.MY's official timetable as the run "BAS.MY today": it fetches the GTFS into
                  cache/basmy_gtfs.zip, delete that file to fetch it again)
   GPS log:       python gps.py   (in its own window, "LAJU GPS logger", started 2026-10-31 20:27; stdlib only, ~0% CPU;
-                 every 30 s each bus's new position into engine/cache/gps/<date>.csv; close the window to stop, run it
-                 again to resume; a sleeping laptop leaves gaps; python gps.py --test = self-check)
+                 every 30 s each bus's new position into engine/cache/gps/<date>.csv; close the window to stop; to start
+                 it again double-click "Start GPS logger.bat" in the LAJU folder (a second copy refuses to run); a sleeping laptop leaves gaps; python gps.py --test = self-check)
   Benchmarks:    python bench.py [ga_seconds]
   Train RL more: python rl.py <minutes> [workers]   (minutes the laptop is awake: sleep does not count, since a
                  2026-10-09 run slept 4 times and used up its clock time asleep; continues from models/route_gnn.pt at lr 1e-4; 4 processes
