@@ -487,7 +487,8 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
   2026-10-31: the planner asked for an AI that "has eyes and can experience the road": the plan is at the end of section
   9 ("Eyes and experience"). Its step 1 is done (planner: "go, use the official data and start the logger"): "BAS.MY
   today" is BAS.MY's official timetable (exam.basmy), kelantan.BUS_ASC 323.3, and the GPS logger runs in its own window
-  (section 3). Let it collect a week or two, then read real speeds and delays from engine/cache/gps.
+  (section 3). Let it collect a week or two, then read real speeds and delays from engine/cache/gps. To run it on a
+  Raspberry Pi instead of the laptop: RASPBERRY_PI.txt (planned, parked by the planner on 2026-10-31).
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as

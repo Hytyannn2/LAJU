@@ -1,0 +1,32 @@
+LAJU - RASPBERRY PI FOR THE GPS LOGGER
+Plan, 2026-10-31. Not started: the planner parked it. Until it runs, the laptop logs ("Start GPS logger.bat").
+
+Why: engine/gps.py records where every BAS.MY Kota Bharu bus is every 30 s (data.gov.my live feed): real speeds by
+hour, delays against the timetable, buses really in service. On the laptop it needs the laptop on, awake and online.
+A Raspberry Pi (a tiny computer, ~5 W) can run it day and night instead, and the laptop is free again.
+
+1. Buy. Cytron (cytron.io, the Malaysian official Raspberry Pi reseller) or its Shopee store. Prices are rough: check.
+   Option A, enough for the logger, about RM 150-200 (recommended):
+     - Raspberry Pi Zero 2 W
+     - official micro-USB power supply (5 V 2.5 A)
+     - microSD card, 32 GB (SanDisk or Samsung)
+     - a case
+   Option B, sturdier, has a LAN port, about RM 300-350:
+     - Raspberry Pi 4 Model B 2 GB, official USB-C power supply (15 W), 32 GB microSD, a case
+   Also a USB microSD card reader (about RM 10) if the laptop has no SD slot. No monitor or keyboard needed.
+
+2. Set it up (about 30 min; the Pi on the same Wi-Fi as the laptop).
+   a. Planner: install Raspberry Pi Imager on the laptop (free, raspberrypi.com/software).
+   b. Claude: makes an SSH key on the laptop (ssh-keygen) and gives the planner its public line to paste in step c,
+      so no password passes through Claude.
+   c. Planner: in Imager pick the Pi model, "Raspberry Pi OS Lite (64-bit)" and the SD card. Edit settings: hostname
+      laju-pi, a username, the Wi-Fi name and password, time zone Asia/Kuala_Lumpur; Services: enable SSH, "Allow
+      public-key authentication only", paste the key. Write the card.
+   d. Planner: SD card into the Pi, plug in the power, wait 2 minutes.
+   e. Claude: ssh <username>@laju-pi.local; copy engine/gps.py to ~/laju/ (standard library only: the Pi's own Python
+      runs it); a systemd service starts it at every power-up and restarts it if it stops; check that rows arrive in
+      ~/laju/cache/gps/<date>.csv.
+   f. Close the laptop's "LAJU GPS logger" window (and remove its shortcut from shell:startup, if one was added).
+
+3. After: leave it plugged in; after a power cut it starts by itself. When the data is needed, Claude copies the CSVs
+   from the Pi into engine/cache/gps (scp) and reads them.
