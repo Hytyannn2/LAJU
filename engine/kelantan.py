@@ -123,9 +123,10 @@ CAPTIVE = {"work": 0.1, "school": 0.6, "study": 0.3, "health": 0.3, "shop": 0.15
                            # elderly patients, students, foreign workers): assumptions
 CAR_FACTOR = 0.8     # a motorbike or car takes 0.8x the bus's minutes on a road (ROADS are bus speeds)
 DRIVE_ACCESS_MIN = 2  # to and from where it is parked, each end
-BUS_ASC = 301.1      # felt minutes the bus loses to a motorbike before any minute counts: with it BAS.MY's own 16 routes at
-                     # their timetable carry 2,800 boardings a day, as BAS.MY reports (84,000 a month, Q4 2025; 2026-10-29).
-                     # That large: in Kelantan the motorbike wins ~99.9% of trips today
+BUS_ASC = 323.3      # felt minutes the bus loses to a motorbike before any minute counts: with it BAS.MY's 16 routes at their
+                     # official timetable (data.gov.my), on the same 150 key stops as LAJU's designs, carry 2,800 boardings a
+                     # day, as BAS.MY reports (84,000 a month, Q4 2025; 2026-10-31; traced routes: 315 with buses all day,
+                     # 301.1 with none at night). That large: in Kelantan the motorbike wins ~99.9% of trips today
 BUSES = 64           # buses when the planner sets none: what BAS.MY owns in Kelantan (2026)
 COVER_WEIGHT = 0.03  # a person within STOP_M of a served stop counts as this many daily riders: "coverage first", the
                      # planner's pick (2026-10-29) from GA 5-min designs on 64 buses: 0 -> 6,316 riders a day, 20% of

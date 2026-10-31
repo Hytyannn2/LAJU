@@ -1,6 +1,7 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-29 21:10 (brain v2 in section 9: Phase 0 the exam, 1 who travels where, 2 riders choose, 3 buses by
+Last updated: 2026-10-31 (the "eyes and experience" plan at the end of section 9; BAS.MY's official timetable and live
+bus GPS found on data.gov.my. Brain v2 in section 9: Phase 0 the exam, 1 who travels where, 2 riders choose, 3 buses by
 period of the day, timed hubs, route ends at rest places; git repo since
 2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
 minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
@@ -32,7 +33,8 @@ Customer: city planners. Goal: a working product + algorithm worth patenting / l
               rl.py        GNN policy + REINFORCE on Kelantan map views    (Phase 5)
               bench.py     Mandl + Kota Bharu benchmarks                   (Phase 4/5)
               export.py    GeoJSON + GTFS                                  (Phase 2/6)
-              exam.py      the exam every design must pass; basmy.json = BAS.MY today   (brain v2, Phase 0)
+              exam.py      the exam every design must pass; BAS.MY today from its official GTFS   (brain v2, Phase 0)
+              gps.py       logs BAS.MY's live bus positions to cache/gps/<date>.csv   (brain v2, eyes)
               server.py    API
               models/route_gnn.pt  trained RL policy (~2 MB, commit it); route_gnn.json = its training progress
               cache/       downloaded data, ~360 MB, not in git (rebuilt by python kelantan.py; rl_cities.pkl,
@@ -89,9 +91,10 @@ Score v3 (sim._v3; Kelantan since 2026-10-29, brain v2 Phase 2): riders choose. 
   routes run between such stops, and a route grows to one along the quickest road or shrinks back to one
   (routes.settle). Reported, not scored: each bus's run from the nearest bus station
   (the depots: 19) and back a day (empty_km_day), and the routes an electric bus can run on 250 km plus 2 km a minute of
-  charging in its layovers (sim.electric). BAS.MY at its timetable (departures every headway from 06:30, trips a day:
-  exam.periods) times no transfers and runs no express; kelantan.BUS_ASC 301.1 (was 315) keeps its 2,800 boardings a day
-  now that it runs no night service.
+  charging in its layovers (sim.electric). BAS.MY at its official timetable (exam.basmy: data.gov.my GTFS; headways per
+  period from its real departures, exam.periods) times no transfers and runs no express; kelantan.BUS_ASC 323.3 makes it
+  carry its 2,800 boardings a day on the same 150 key stops as LAJU's designs (since 2026-10-31; 315 and 301.1 before, on
+  traced routes).
 Score v2 (sim.py; Mandl and the synthetic RL cities still use it) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
   10 min since 2026-10-10, Mandl 5) + bus-km x RM per bus-km of the route's category + RM 100 per unserved trip (50 until
   2026-10-18; a trip needing 3+ changes counts as unserved since 2026-10-18, kelantan.MAX_TRANSFERS)) / trips.
@@ -150,7 +153,11 @@ own C++ if profiling shows a Python hotspot numpy/scipy cannot fix (none so far:
 
   Self-checks:   python sim.py | routes.py | rl.py | export.py | kelantan.py | traffic.py | exam.py   -> "ok ..."
   The exam:      python exam.py "BAS.MY today" "Kelantan network"   (saved runs side by side, ~2 min; python exam.py
-                 --basmy saves basmy.json as the run "BAS.MY today")
+                 --basmy saves BAS.MY's official timetable as the run "BAS.MY today": it fetches the GTFS into
+                 cache/basmy_gtfs.zip, delete that file to fetch it again)
+  GPS log:       python gps.py   (in its own window, "LAJU GPS logger", started 2026-10-31 20:27; stdlib only, ~0% CPU;
+                 every 30 s each bus's new position into engine/cache/gps/<date>.csv; close the window to stop, run it
+                 again to resume; a sleeping laptop leaves gaps; python gps.py --test = self-check)
   Benchmarks:    python bench.py [ga_seconds]
   Train RL more: python rl.py <minutes> [workers]   (minutes the laptop is awake: sleep does not count, since a
                  2026-10-09 run slept 4 times and used up its clock time asleep; continues from models/route_gnn.pt at lr 1e-4; 4 processes
@@ -363,6 +370,8 @@ PHASE 6 - Product for planners                                 [~]
   is sold needs an Esri (ArcGIS Location Platform) licence or another imagery provider.
 - Microsoft Global ML Building Footprints: ODbL (attribution; a shared database derived from it stays ODbL).
   Hospital beds (MOH, data.gov.my) and school enrolment (KPM, OpenDOSM): CC BY 4.0, credit the source.
+- BAS.MY Kota Bharu GTFS, static and realtime (data.gov.my, published by Konsortium E-Mutiara): check data.gov.my's
+  terms of use before shipping it in a product or report; credit the source.
 - Data licences: Kontur Population (CC BY 4.0) and OpenDOSM (CC BY 4.0) need attribution in the
   product and reports. Mandl data is a public benchmark; published route sets are cited by author.
 - Leaflet (BSD), FastAPI (MIT), SUMO (EPL-2.0), PyTorch (BSD), Stable-Baselines3 (MIT),
@@ -475,6 +484,10 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
   choose, score v3) and 3 (buses by period, timed hubs, route ends at rest places) are done; next is Phase 4 (each route
   explains itself, stability) once the planner says go. Asked them: is "a route ends within a 5-min drive of a place a
   bus can wait" right (the strict 300 m cost half the riders)? Items 0-5 below are the v1 state it starts from.
+  2026-10-31: the planner asked for an AI that "has eyes and can experience the road": the plan is at the end of section
+  9 ("Eyes and experience"). Its step 1 is done (planner: "go, use the official data and start the logger"): "BAS.MY
+  today" is BAS.MY's official timetable (exam.basmy), kelantan.BUS_ASC 323.3, and the GPS logger runs in its own window
+  (section 3). Let it collect a week or two, then read real speeds and delays from engine/cache/gps.
   0. State on 2026-10-18 05:40 (all self-checks pass; history of 2026-10-09/10 in sections 5 and 7).
      - Planner's answers at 05:20, all done: old files deleted (to the Recycle Bin: 41 old runs, cache/sumo, the raw OSM and
        Kontur downloads, web/public, web/README.md) and the code only old runs needed; trips needing 3+ changes count as
@@ -728,3 +741,61 @@ training); the AI retrains once, in Phase 5, when the rules have settled, so no 
 Later, not now: on-demand vans and vans on small roads (the ~24% of people big buses cannot reach: the way to 90%), town
 loops if the exam shows town trips poorly served, timing buses to train timetables, fares, a flood backup network, other
 states.
+
+Eyes and experience (planned 2026-10-31; not built, no code until the planner says go). The planner: "make the AI as if
+it has eyes and can experience the road". Why: the AI sees averages on a map (every wait half the headway, one speed per
+road class, every person alike, guessed knobs). Riders live through noon heat, waits without shade, late buses and missed
+changes, and decide by their bad days, not their average ones. Four parts:
+  1. Eyes: see the real place.
+     - BAS.MY's own data on data.gov.my (found 2026-10-31; the static file was empty on 2026-10-28):
+       api.data.gov.my/gtfs-static/mybas-kota-bharu = the official timetable (Konsortium E-Mutiara: 16 routes D10-D62,
+       755 stops with their positions, 376 trips, stop times per stop, route shapes, weekday and weekend services, first
+       bus 06:30, last 19:00; trips per route match basmy.json). api.data.gov.my/gtfs-realtime/vehicle-position/
+       mybas-kota-bharu = live bus GPS (38 buses reporting at 19:21 on Saturday 31 Oct, each with its plate and trip).
+       Logged every 30 s for weeks: real speeds by hour and road, delays against the timetable, buses really in service,
+       how evenly they come. No passenger counts in either feed.
+     - Shade: ESA WorldCover tree cover (10 m, free, CC BY 4.0), so a walk to the stop counts its heat, not just metres.
+     - Street photos: Mapillary (open; Kelantan coverage to check). A vision AI rates each key stop site: sidewalk,
+       shade, a safe place for the bus to pull in.
+  2. Experience: live a day. People one by one instead of averages (a synthetic Kelantan: each person a home, a job or
+     school, an age, a motorbike or not). Each lives a day: heat by the hour and shade on the walk, traffic delays (from
+     the GPS log), crowded buses, missed changes, rain. They remember: bad days make them quit, so riders = who still
+     rides after a month. Personas: Mak Cik Aminah (68, no car) to HRPZ II; a Form 4 pupil to school; a foreign worker to a
+     factory at 7 am; the exam's 3 test trips become hundreds. Tool: MATSim (open source, used by many cities) or a
+     lighter Python version; a 10% sample on the laptop.
+  3. Thinking: plan like a senior planner.
+     - Layers: main corridors and rail first, then hubs, then feeders, then timetables (now all at once).
+     - Learn from its own best: the search's best designs train the AI, which then proposes better ones (expert
+       iteration, as AlphaZero learned).
+     - Gut feeling: a fast copy of the slow day simulation screens millions of designs; the full simulation checks the
+       best few.
+     - Robust: every design tried under what-ifs (riders more or less sensitive: THETA, BUS_ASC; more traffic; a rain
+       day); pick one good in all of them, not perfect for one guess.
+     - Planner's eye: a critic that checks the map the way the planner does (zigzags, busy places missed, route ends)
+       and explains each route (Phase 4).
+  4. Reality loop: after launch, real ridership and GPS recalibrate the model; the master network changes a little at a
+     time.
+  Limits: laptop CPU, no money for compute: samples, vision only at the key stops. Ridership per route is still missing:
+  ask Konsortium E-Mutiara (e-mutiara.com.my) or APAD with a UKM letter, or count riders by hand on a few trips.
+  Order: (1) the official timetable as "BAS.MY today" (replaces the traced basmy.json) and start the GPS log; (2) the
+  persona day simulation with delays and heat; (3) layers and learn-from-best in Phase 5; (4) the what-ifs; (5) street
+  photos. Without real data even the best thinking optimises a guess.
+  1. [x] 2026-10-31. exam.basmy reads the official GTFS (cache/basmy_gtfs.zip): 16 routes, 751 stop positions, each
+     direction its own stops, minutes and departures; basmy.json (traced) deleted. The exam rides BAS.MY's own stops,
+     each direction a one-way route at its official times (exam.official). For riders, "BAS.MY today" runs each route on
+     the key stops of the saved "Kelantan network" nearest its stops (exam.onto, locked), so it is counted on the same
+     150 key stops as LAJU's designs; on them BAS.MY carried 3,899 boardings at BUS_ASC 301.1 (the traced routes had
+     extra key stops), so BUS_ASC 323.3 brings it to 2,800 (2,352 riders). The exam:
+                                          BAS.MY today (official)   LAJU Phase 3 design (64 buses)
+       riders a day (boardings)           2,352 (2,800)             4,096 (5,716)  (5,696 at BUS_ASC 301.1)
+       buses on the road peak/day/eve/night  46 / 50 / 47 / 2       64 all day
+       stops / people near a stop         751 / 30%                 535 / 25%
+       average of the 6 access tests      26%                       30%
+       clinic or hospital / mall or market 33% / 17%                40% / 27%
+       nearest town, 45 min               14%                       22%
+       planner's 3 test trips             KB Mall 47 min direct, AEON none, HRPZ II 58 min direct
+                                                                    KB Mall none, AEON none, HRPZ II 59 min, 1 change
+       route ends: 5-min drive / 300 m    10 / 6 of 16              16 / 1 of 16
+     -> LAJU still: 1.7x the riders (2.4x against the traced BAS.MY) and better access, fewer people near a stop.
+     gps.py logs the live feed in its own window since 2026-10-31 20:27 (38 buses at 19:21 on a Saturday; no
+     passenger counts). Ridership per route is still the missing piece.

@@ -10,19 +10,24 @@ set, judged at the stops a bus really serves, not by the optimisers' score:
   shape     routes over 1.5x their quickest drive; route ends where a bus can wait and the driver rest (kelantan.rests)
   fleet     buses on the road per period of the day, bus-km a day, empty runs from depots, routes an e-bus can run
 
-Each network runs at its own headways and speeds: BAS.MY at its timetable (basmy.json: how often, how long one way, how
-many times a day from 06:30), a LAJU design at what sim.evaluate runs, per period of the day (kelantan.PERIODS); each
-test is judged in the period its trips are made. Every boarding waits half the headway, as in sim.py; a change at a hub
-of a LAJU design waits sim.TIMED_MIN (its timetable times them; BAS.MY's does not). Walking: kelantan.WALK_MIN_PER_KM along the straight line, at most
-kelantan.WALK_CAP_MIN (~880 m): farther, people ride a motorbike or get dropped off.
+Each network runs at its own headways and speeds, per period of the day (kelantan.PERIODS): BAS.MY at its official
+timetable (data.gov.my GTFS: its own stops, each direction at its own times and departures), a LAJU design at what
+sim.evaluate runs; each test is judged in the period its trips are made. Every boarding waits half the headway, as in
+sim.py; a change at a hub of a LAJU design waits sim.TIMED_MIN (its timetable times them; BAS.MY's does not). Walking:
+kelantan.WALK_MIN_PER_KM along the straight line, at most kelantan.WALK_CAP_MIN (~880 m): farther, people ride a
+motorbike or get dropped off.
 
     python exam.py                                  -> self-check: "ok ..."
     python exam.py "BAS.MY today" "Kelantan network" -> the exam of the newest saved runs of those names, side by side
-    python exam.py --basmy                          -> saves BAS.MY Kelantan (basmy.json) as the run "BAS.MY today"
+    python exam.py --basmy                          -> saves BAS.MY Kota Bharu's official timetable as the run "BAS.MY today"
 """
+import csv
+import io
 import json
 import math
 import sys
+import zipfile
+from collections import defaultdict
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -38,7 +43,8 @@ from sim import DWELL_MIN, LAYOVER_MIN, TIMED_MIN, UTURN_MIN, electric, evaluate
 
 HERE = Path(__file__).resolve().parent
 TARGETS = HERE / "cache" / "exam_places.json"  # the exam's destinations, rebuilt from OSM when deleted
-BASMY = HERE / "basmy.json"  # BAS.MY Kelantan: each route's stops in order and how often it runs
+GTFS = "https://api.data.gov.my/gtfs-static/mybas-kota-bharu"  # BAS.MY Kota Bharu's official timetable (data.gov.my)
+GTFS_ZIP = HERE / "cache" / "basmy_gtfs.zip"  # delete it to fetch the timetable again
 TESTS = (  # destination kinds, minutes door to door, "nearest" = the one closest to home / "any" of them, the period of the
     # day it is judged in (kelantan.PERIODS: pupils go in the morning peak, outings in the evening peak): knobs
     ("school", ("school",), 30, "nearest", 0),
@@ -56,7 +62,6 @@ TRIPS = (  # the planner's test trips (2026-10-10 / 18): (from, lat, lng), (to, 
 )
 TOWN_PER_KM2, STOP_M = kelantan.TOWN_PER_KM2, kelantan.STOP_M  # town / rural, and the walk that counts as covered
 MAX_CHANGES = 2
-FIRST_BUS = 6.5  # BAS.MY's routes first leave at 06:30 (bas.my timetables, 2026-10-29)
 REACH_M = 1000 * kelantan.WALK_CAP_MIN / kelantan.WALK_MIN_PER_KM
 
 
@@ -125,18 +130,19 @@ def expand(p, net, rs, express=None):
 def transit(seqs, fwd, bwd, heads, S, changes=MAX_CHANGES, hubs=()):
     """Quickest minutes between every two of S stops, at most `changes` changes, and the changes each takes: (T, C).
     Every boarding waits half its route's headway (inf: the route does not run), a change at one of the stops `hubs`
-    at most TIMED_MIN. The graph has a copy of every stop per number of buses boarded so far, so a trip that would need
-    more changes has no path at all (sim.py instead drops a trip whose quickest path needs too many; here a slower path
-    with fewer changes still counts)."""
+    at most TIMED_MIN; a route whose bwd is None runs one way only. The graph has a copy of every stop per number of
+    buses boarded so far, so a trip that would need more changes has no path at all (sim.py instead drops a trip whose
+    quickest path needs too many; here a slower path with fewer changes still counts)."""
     L, M = changes + 1, sum(len(s) for s in seqs)
     timed = np.isin(np.arange(S), list(hubs))
     rows, cols, w, base, start = [], [], [], (L + 1) * S, 0
     for s, f, b, h in zip(seqs, fwd, bwd, heads):
         for l in range(1, L + 1 if np.isfinite(h) else 1):
             node = base + (l - 1) * M + start + np.arange(len(s))
-            rows += [(l - 1) * S + s, node, node[:-1], node[1:]]  # board, alight, ride out, ride back
-            cols += [node, l * S + s, node[1:], node[:-1]]
-            w += [np.where(timed[s] & (l > 1), min(TIMED_MIN, h / 2), h / 2), np.full(len(s), 1e-9), f, b]
+            back = b is not None
+            rows += [(l - 1) * S + s, node, node[:-1]] + [node[1:]] * back  # board, alight, ride out, ride back
+            cols += [node, l * S + s, node[1:]] + [node[:-1]] * back
+            w += [np.where(timed[s] & (l > 1), min(TIMED_MIN, h / 2), h / 2), np.full(len(s), 1e-9), f] + [b] * back
         start += len(s)
     G = coo_matrix((np.concatenate(w), (np.concatenate(rows), np.concatenate(cols))), shape=(base + L * M,) * 2).tocsr()
     T, C = np.full((S, S), np.inf), np.zeros((S, S), np.int8)
@@ -166,22 +172,25 @@ def _pairs(A, B, metres=REACH_M):
 
 def exam(p, net, rs, heads, express=None, timetable=None, hubs=()):
     """The exam of route set rs (key-stop indices), route i running every heads[i][k] minutes in period k
-    (kelantan.PERIODS; one number = all day; inf = no bus) and, where its real timetable[i] gives them, taking
-    "minutes" one way; changes at the key stops `hubs` are timed. -> dict (see report)."""
+    (kelantan.PERIODS; one number = all day; inf = no bus); changes at the key stops `hubs` are timed. With a timetable
+    (BAS.MY today): the access tests ride its own stops, each direction at its official times (official()), and
+    timetable[i]["minutes"] are route i's minutes out and back. -> dict (see report)."""
     R = kelantan.roads()
     hours = np.array([b - a for _, a, b in kelantan.PERIODS], float)
     heads = np.array(heads, float).reshape(len(rs), -1) * np.ones(len(hours))
-    v, seqs, fwd, bwd = expand(p, net, rs, express)
-    for i, t in enumerate(timetable or []):
-        if t.get("minutes"):  # traced routes keep their roads but run at their real speed (tracing adds U-turns: straight())
-            fwd[i], bwd[i] = fwd[i] * t["minutes"] / fwd[i].sum(), bwd[i] * t["minutes"] / bwd[i].sum()
-    SP, S = R["P"][v], len(v)
-    timed = np.flatnonzero(np.isin(v, net["nodes"][list(hubs)]))
+    if timetable is None:
+        v, seqs, fwd, bwd = expand(p, net, rs, express)
+        SP, legs, timed = R["P"][v], heads, np.flatnonzero(np.isin(v, net["nodes"][list(hubs)]))
+        out_back = np.array([(f.sum(), b.sum()) for f, b in zip(fwd, bwd)]).reshape(-1, 2)
+    else:  # BAS.MY: each direction a one-way route through its own stops at its official minutes and departures
+        SP, seqs, fwd, legs = official()
+        bwd, timed, out_back = [None] * len(seqs), [], np.array([t["minutes"] for t in timetable], float)
+    S = len(SP)
     nets = {}  # period -> (T, C)
 
     def at(k):
         if k not in nets:
-            nets[k] = transit(seqs, fwd, bwd, heads[:, k], S, hubs=timed)
+            nets[k] = transit(seqs, fwd, bwd, legs[:, k], S, hubs=timed)
         return nets[k]
 
     P, ppl, town, district = homes()
@@ -222,12 +231,12 @@ def exam(p, net, rs, heads, express=None, timetable=None, hubs=()):
         out["trips"][f"{a} -> {b}"] = (float(t[k]), int(C[so[k[0]], sd[k[1]]])) if np.isfinite(t[k]) else (math.inf, -1)
     m = evaluate(p, rs)
     quick = quickest(p)[0]
-    out["crooked"] = sum(max(f.sum() / quick[r[0], r[-1]], b.sum() / quick[r[-1], r[0]]) > kelantan.MAX_DETOUR
-                         for r, f, b in zip(rs, fwd, bwd))
+    out["crooked"] = sum(max(o / quick[r[0], r[-1]], b / quick[r[-1], r[0]]) > kelantan.MAX_DETOUR
+                         for r, (o, b) in zip(rs, out_back))
     ends = R["P"][net["nodes"][[x for r in rs for x in (r[0], r[-1])]]]
     out["rest_ends"] = int((cKDTree(kelantan.rests()).query(ends)[0].reshape(-1, 2) <= kelantan.REST_M).all(1).sum())
     out["rest_near"] = sum(bool(p.rest_end[r[0]] and p.rest_end[r[-1]]) for r in rs)  # within kelantan.REST_RUN
-    cycle = np.array([f.sum() + b.sum() + LAYOVER_MIN + p.rest_min[r[0]] + p.rest_min[r[-1]] for r, f, b in zip(rs, fwd, bwd)])
+    cycle = out_back.sum(1) + LAYOVER_MIN + np.array([p.rest_min[r[0]] + p.rest_min[r[-1]] for r in rs])
     buses = np.where(np.isfinite(heads), np.ceil(cycle[:, None] / heads - 0.05), 0)  # headways are saved to 0.1 min
     km = np.array(m["route_km"])
     out["buses_k"] = buses.sum(0).astype(int).tolist()  # on the road in each period
@@ -235,7 +244,7 @@ def exam(p, net, rs, heads, express=None, timetable=None, hubs=()):
     out["bus_km_day"] = float((2 * km[:, None] * np.where(np.isfinite(heads), 60 * hours / heads, 0)).sum())
     out["empty_km_day"] = float(sum(b * min(p.depot_km[r[0]], p.depot_km[r[-1]]) for r, b in zip(rs, buses.max(1))))
     out["electric"] = sum(electric(k, c, hours.sum()) for k, c in zip(km, cycle))
-    out["route_minutes"] = [round(float(f.sum())) for f in fwd]
+    out["route_minutes"] = [round(float(o)) for o in out_back[:, 0]]
     out |= {"routes": len(rs), "stops": S, "hubs": len(hubs)}
     return out
 
@@ -250,11 +259,58 @@ def straight(p, r):
     return routes.unturn(p, out)
 
 
-def periods(t):
-    """Headway in each period (kelantan.PERIODS) of a timetable that leaves every t["headway"] min from FIRST_BUS,
-    t["trips"] times a day: the period's minutes / its departures; inf with none."""
-    dep = FIRST_BUS + np.arange(t["trips"]) * t["headway"] / 60
-    return [60 * (b - a) / k if (k := int(((dep >= a) & (dep < b)).sum())) else math.inf for _, a, b in kelantan.PERIODS]
+def periods(deps, ways=1):
+    """Headway in each period (kelantan.PERIODS) of buses leaving at `deps` (minutes after midnight), shared by `ways`
+    directions: the period's minutes / its departures each way; inf with none."""
+    h = np.asarray(deps, float) / 60
+    return [60 * (b - a) * ways / k if (k := int(((h >= a) & (h < b)).sum())) else math.inf for _, a, b in kelantan.PERIODS]
+
+
+@lru_cache
+def basmy():
+    """BAS.MY Kota Bharu from its official GTFS (Konsortium E-Mutiara via data.gov.my, cached in GTFS_ZIP): per route, by
+    ref (D10 ... D62), its name and, per direction, its stops in order (name, lat, lng), the minutes from each stop to
+    the next and its departures (minutes after midnight). One timetable for every day: all its trips are "WEEKEND"
+    (2026-10-31), each direction one stop pattern at one speed all day."""
+    kelantan._download(GTFS, GTFS_ZIP)
+    z = zipfile.ZipFile(GTFS_ZIP)
+    rows = lambda n: csv.DictReader(io.TextIOWrapper(z.open(n), "utf-8-sig"))
+    clock = lambda t: sum(int(x) * m for x, m in zip(t.split(":"), (60, 1, 1 / 60)))
+    stops = {s["stop_id"]: (s["stop_name"], float(s["stop_lat"]), float(s["stop_lon"])) for s in rows("stops.txt")}
+    times = defaultdict(list)
+    for x in rows("stop_times.txt"):
+        times[x["trip_id"]].append((int(x["stop_sequence"]), clock(x["departure_time"]), x["stop_id"]))
+    out = {r["route_id"]: {"ref": r["route_short_name"], "name": r["route_long_name"], "dirs": {}} for r in rows("routes.txt")}
+    for t in rows("trips.txt"):
+        seq = sorted(times[t["trip_id"]])
+        d = out[t["route_id"]]["dirs"].setdefault(t["direction_id"], {
+            "stops": [stops[s] for _, _, s in seq], "minutes": np.diff([m for _, m, _ in seq]).tolist(), "deps": []})
+        d["deps"].append(seq[0][1])
+    return [r | {"dirs": [r["dirs"][k] for k in sorted(r["dirs"])]} for r in sorted(out.values(), key=lambda r: r["ref"])]
+
+
+def official():
+    """BAS.MY's own stops (metres (S, 2)) and, for each direction of each route, its stops (indices into them), the
+    minutes to the next stop and its headway in each period: one-way routes for transit()."""
+    key, seqs, fwd, heads = {}, [], [], []
+    for r in basmy():
+        for d in r["dirs"]:
+            seqs.append(np.array([key.setdefault(s[1:], len(key)) for s in d["stops"]]))
+            fwd.append(np.maximum(d["minutes"], 1e-9))
+            heads.append(periods(d["deps"]))
+    return kelantan._m(*np.array(list(key)).T), seqs, fwd, np.array(heads)
+
+
+def onto(p, net, stops):
+    """A route through `stops` ((name, lat, lng) in order) on the key stops of p: each stop's nearest key stop, joined by
+    the quickest stop-graph paths, loops and U-turns cut (straight)."""
+    z = cKDTree(kelantan.roads()["P"][net["nodes"]]).query(kelantan._m(*np.array([s[1:] for s in stops]).T))[1]
+    D, pred = routes.quickest(p)
+    seq = [int(z[0])]
+    for b in z[1:]:
+        if b != seq[-1] and np.isfinite(D[seq[-1], b]):
+            seq += routes.path(pred, seq[-1], b)[1:]
+    return straight(p, seq)
 
 
 def load(name):
@@ -269,9 +325,9 @@ def load(name):
         raise SystemExit(f"no saved run named {name!r}")
     p, net, _, lk = server._problem(server.DesignRequest(**d["input"]))
     rs = lk + server._routes(d, p, net, lk)
-    if "timetable" in d:  # BAS.MY: its own headways and trip times, and every bus stops at every stop
+    if "timetable" in d:  # BAS.MY today: its official timetable, every bus stopping at every stop
         t = d["timetable"]
-        return p, net, [straight(p, r) for r in rs], [periods(x) for x in t], None, t, []
+        return p, net, rs, [[math.inf if h is None else h for h in x["periods"]] for x in t], None, t, []
     m = d["output"]["metrics"]
     if len(m["headway"]) != len(rs) or len(m["express"]) != len(rs):
         m = evaluate(p, rs, detail=True)
@@ -280,23 +336,31 @@ def load(name):
 
 
 def save_basmy():
-    """BAS.MY Kelantan (basmy.json) as the saved run "BAS.MY today": every route locked through its stops, so the website
-    draws it and the exam reads its timetable; its riders are counted at that timetable too."""
+    """BAS.MY Kota Bharu's official timetable (basmy()) as the saved run "BAS.MY today": each route on the key stops of
+    the saved "Kelantan network" nearest its stops (onto()), locked, so its riders are counted on the same key stops as a
+    LAJU design's and the website draws it; the exam rides its own stops and times (official())."""
     import server
 
-    b = json.loads(BASMY.read_text())["routes"]
-    req = server.DesignRequest(name="BAS.MY today", bbox=server.KELANTAN, n_routes=len(b), n_stops=150, optimizer="baseline",
-                               max_route_min=0, locked=[[server.Stop(lat=s[1], lng=s[2], name=s[0]) for s in r["stops"]] for r in b])
+    b, runs = basmy(), [json.loads(f.read_text()) for f in sorted(server.RESULTS.glob("run-*.json"), reverse=True)]
+    spots = next(x["input"]["spots"] for x in runs if x["input"]["name"] == "Kelantan network")
+    base = server.DesignRequest(name="BAS.MY today", bbox=server.KELANTAN, n_routes=len(b), n_stops=150, optimizer="baseline",
+                                max_route_min=0, spots=spots)
+    p, net, _, _ = server._problem(base)
+    R = kelantan.roads()
+    at = lambda z: server.Stop(lat=float(R["lat"][net["nodes"][z]]), lng=float(R["lng"][net["nodes"][z]]))
+    req = base.model_copy(update={"locked": [[at(z) for z in onto(p, net, r["dirs"][0]["stops"])] for r in b]})
     p, net, _, lk = server._problem(req)
-    req = req.model_copy(update={"spots": net["spots"]})  # the AI's key stops pinned: the baseline stays put
+    assert len(net["nodes"]) == len(spots) and all(len(r) >= 2 for r in lk), "the routes run on the network's key stops"
+    heads = [periods(sum((d["deps"] for d in r["dirs"]), []), len(r["dirs"])) for r in b]  # each way, both directions
     server.RESULTS.mkdir(exist_ok=True)
     f = next((f for f in server.RESULTS.glob("run-*.json") if json.loads(f.read_text())["input"]["name"] == req.name),
              server.RESULTS / f"run-{datetime.now():%Y%m%d-%H%M%S-%f}.json")  # replaces the last one
-    out = server._output(p, net, [straight(p, r) for r in lk], req)
-    out["metrics"] = evaluate(p, [straight(p, r) for r in lk], detail=True, fixed=[periods(r) for r in b])  # its timetable
-    server._save(f, {"input": req.model_dump(), "output": out,
-                     "timetable": [{k: r[k] for k in ("ref", "headway", "minutes", "trips")} for r in b]})
-    print("saved", f.stem, "BAS.MY today:", len(lk), "routes")
+    out = server._output(p, net, lk, req)
+    out["metrics"] = evaluate(p, lk, detail=True, fixed=heads)  # its timetable
+    server._save(f, {"input": req.model_dump(), "output": out, "timetable": [
+        {"ref": r["ref"], "name": r["name"], "minutes": [sum(d["minutes"]) for d in r["dirs"]],
+         "periods": [None if math.isinf(h) else round(h, 1) for h in x]} for r, x in zip(b, heads)]})
+    print("saved", f.stem, "BAS.MY today:", len(lk), "routes;", round(out["metrics"]["boardings"]), "boardings a day")
 
 
 def report(names, results):
@@ -342,8 +406,10 @@ if __name__ == "__main__":
         assert np.isinf(transit(seqs, f, f, [10, 20, 30], 4, changes=1)[0][0, 3])  # 2 changes not allowed: no way
         assert abs(transit(seqs, f, f, [10, 20, 30], 4, hubs=[1])[0][0, 2] - (5 + 5 + TIMED_MIN + 6)) < 1e-6  # timed at 1
         assert np.isinf(transit(seqs, f, f, [10, math.inf, 30], 4)[0][0, 2])  # route B does not run then
-        assert periods({"headway": 60, "trips": 13}) == [60, 60, 60, math.inf]  # 06:30 ... 18:30: none at night
-        assert periods({"headway": 240, "trips": 3}) == [180, 210, math.inf, math.inf]  # 06:30 | 10:30, 14:30
+        assert periods(390 + 60 * np.arange(13)) == [60, 60, 60, math.inf]  # 06:30 ... 18:30: none at night
+        assert periods([420, 660, 900, 600, 840, 1080], ways=2) == [360, 210, 360, math.inf]  # D61: 3 a day each way
+        one = transit(seqs, f, [None] * 3, [10, 20, 30], 4)[0]  # one way: 0 -> 3 only
+        assert abs(one[0, 3] - 48) < 1e-6 and np.isinf(one[3, 0])
         T, C = transit(seqs + [np.array([0, 1, 2, 3])], f + [np.array([5.0, 6.0, 7.0])], f + [np.array([5.0, 6.0, 7.0])],
                        [10, 20, 30, 40], 4)
         assert abs(T[0, 3] - 38) < 1e-6 and C[0, 3] == 0  # the through route (wait 20 + 18) beats changing twice
