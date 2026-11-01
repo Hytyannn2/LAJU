@@ -10,4 +10,3 @@ PLAN.txt
 RASPBERRY_PI.txt
 web/AGENTS.md
 basmy_routes.html
-engine/models/route_gnn.pt
