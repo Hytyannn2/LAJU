@@ -6,3 +6,8 @@ __pycache__/
 .DS_Store
 engine/cache/
 .claude/
+PLAN.txt
+RASPBERRY_PI.txt
+web/AGENTS.md
+basmy_routes.html
+engine/models/route_gnn.pt
