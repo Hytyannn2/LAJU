@@ -797,12 +797,18 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
     for z, v in enumerate(nodes):
         given = [x.get("name") for x, pz in zip(planner, planner_zone) if pz == z and x.get("name")]
         close = near is not None and np.hypot(*(zP[z] - _m([named[near[z]]["lat"]], [named[near[z]]["lng"]])[0])) < 300
-        names.append(given[0] if given else named[near[z]]["name"] if close else str(R["node_name"][v]) or f"Stop {z + 1}")
+        names.append(given[0] if given else named[near[z]]["name"] if close else _road(R["node_name"][v]) or f"Stop {z + 1}")
     net = {"nodes": nodes, "spots": [int(v) for v in pick[len(planner):]], "paths": paths, "mids": mids, "names": names,
            "locked": lk, "hP": bP, "hpop": bpop, "wP": wP, "wpop": wpop,
            "planner_snap_m": snap[: len(planner)].round().tolist(), "people": float(bpop.sum()), "dosm_year": year,
            "trips": float(od.sum())}
     return p, net
+
+
+def _road(name):
+    """A road's name; an unnamed road is known by its number (OSM ref): "8" reads "Route 8"."""
+    name = str(name)
+    return f"Route {name}" if name.isdigit() else name
 
 
 def describe(p, net, rs, express=None):
@@ -814,7 +820,7 @@ def describe(p, net, rs, express=None):
     def stop(v, z=None):
         if v not in stops:
             stops[v] = {"id": f"s{v}", "lat": round(float(R["lat"][v]), 6), "lng": round(float(R["lng"][v]), 6),
-                        "name": net["names"][z] if z is not None else str(R["node_name"][v]) or "Unnamed road",
+                        "name": net["names"][z] if z is not None else _road(R["node_name"][v]) or "Unnamed road",
                         "road": f"{R['node_cls'][v]} road", "key": z is not None, "routes": []}
         return stops[v]
 

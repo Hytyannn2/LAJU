@@ -21,7 +21,9 @@ def geojson(out):
               "properties": {"route": i + 1, "stops": len(r["stops"]), "km": round(m["route_km"][i], 2),
                              "minutes": round(m["route_min"][i], 1), "headway_min": m["headway"][i],
                              "category": m.get("category", [""] * len(out["routes"]))[i],
-                             "peak_hour_load": m["peak_hour_load"][i]}}
+                             "peak_hour_load": m["peak_hour_load"][i]}
+                            | ({k: out["why"][i][k] for k in ("role", "boardings", "lost_riders", "lost_covered")}
+                               if "why" in out else {})}
              for i, r in enumerate(out["routes"])]
     feats += [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [s["lng"], s["lat"]]},
                "properties": {k: s[k] for k in ("id", "name", "road", "key")} | {"routes": [i + 1 for i in s["routes"]]}}

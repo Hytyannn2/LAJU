@@ -367,7 +367,7 @@ def frame(net, show):
     import server
 
     G, info, req = show
-    out = server._output(G.p, info, min(_samples(net, G, 8), key=lambda rs: evaluate(G.p, rs)["score"]), req)
+    out = server._output(G.p, info, min(_samples(net, G, 8), key=lambda rs: evaluate(G.p, rs)["score"]), req, why=False)
     del out["model"]  # the trip matrix, for SUMO: not drawn
     return out
 

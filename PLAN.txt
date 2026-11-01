@@ -1,8 +1,9 @@
 LAJU - AI BUS NETWORK DESIGNER (KELANTAN)
 Implementation plan. Read this first at the start of every session, and update it at the end.
-Last updated: 2026-10-31 (the "eyes and experience" plan at the end of section 9; BAS.MY's official timetable and live
+Last updated: 2026-11-01 (brain v2 Phase 4: each route explains itself, the master network keeps its routes unless a
+change gains enough; 2026-10-31: the "eyes and experience" plan at the end of section 9; BAS.MY's official timetable and live
 bus GPS found on data.gov.my. Brain v2 in section 9: Phase 0 the exam, 1 who travels where, 2 riders choose, 3 buses by
-period of the day, timed hubs, route ends at rest places; git repo since
+period of the day, timed hubs, route ends at rest places, 4 explanations and stability; git repo since
 2026-10-28, first commit 88513f8 = the v1 brain. Before: 2026-10-18 15:00, RM 100 per unserved trip, 3+ changes = no bus,
 minimum service 30/30/60 with frequency by demand, crooked routes per minute, shops sized by their building, Train takes
 in the AI's designs, live AI map, click a stop for its routes: sections 2, 4, 5, 7, 8)
@@ -95,6 +96,18 @@ Score v3 (sim._v3; Kelantan since 2026-10-29, brain v2 Phase 2): riders choose. 
   period from its real departures, exam.periods) times no transfers and runs no express; kelantan.BUS_ASC 323.3 makes it
   carry its 2,800 boardings a day on the same 150 key stops as LAJU's designs (since 2026-10-31; 315 and 301.1 before, on
   traced routes).
+  Each route explains itself (since 2026-11-01, brain v2 Phase 4, sim.explain; the website's Result tab, the GeoJSON):
+  the riders boarding it a day, those riding it the whole way and their 3 busiest key-stop pairs; who loses what without
+  it: riders (the design run again without it, its buses shared out among the other routes; below 0 = they would carry
+  more elsewhere), the people whose only served stop near home it has (sim._near, the other routes stopping as they do),
+  the key stops no other route serves; and its role: trunk (a bus every 15 min or better at its busiest, sim.TRUNK_MIN),
+  feeder (30% or more of its boardings are riders changing to or from another bus, sim.FEEDER_SHARE) or coverage (the
+  rest: a bus for the people along it). One evaluation per route, so Train leaves it out of each improvement and adds
+  it when paused (server._output why=False). Stability: the routes Train starts from are the master network
+  (Problem.keep); each route a design changes multiplies the score by 1 + sim.KEEP (0.01) x how much it changed (1 - the
+  share of stops in common, Jaccard; old and new routes paired by linear_sum_assignment: sim.changed), so a change must
+  win ~1% more riders (or people near a stop) per route it replaces, a one-stop tweak far less. The Result tab says how
+  many routes changed since Train started. "Design network" (a fresh design) has no master.
 Score v2 (sim.py; Mandl and the synthetic RL cities still use it) in RM per trip = (RM 10/h x passenger time incl. walking, waiting and a transfer penalty (Kelantan
   10 min since 2026-10-10, Mandl 5) + bus-km x RM per bus-km of the route's category + RM 100 per unserved trip (50 until
   2026-10-18; a trip needing 3+ changes counts as unserved since 2026-10-18, kelantan.MAX_TRANSFERS)) / trips.
@@ -480,10 +493,11 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
 =====================================================================
 8. NEXT SESSION - START HERE
 =====================================================================
-  START HERE (2026-10-29 21:10): section 9, the brain v2 plan. Phases 0 (the exam), 1 (who travels where), 2 (riders
-  choose, score v3) and 3 (buses by period, timed hubs, route ends at rest places) are done; next is Phase 4 (each route
-  explains itself, stability) once the planner says go. Asked them: is "a route ends within a 5-min drive of a place a
-  bus can wait" right (the strict 300 m cost half the riders)? Items 0-5 below are the v1 state it starts from.
+  START HERE (2026-11-01): section 9, the brain v2 plan. Phases 0 (the exam), 1 (who travels where), 2 (riders choose,
+  score v3), 3 (buses by period, timed hubs, route ends at rest places) and 4 (each route explains itself, the master
+  network changes a little at a time) are done; next is Phase 5 (reset the AI, retrain from zero) once the planner says
+  go. The route-end rule stays "within a 5-min drive of a place a bus can wait": asked on 2026-10-29, the planner said
+  "go phase 4" without changing it. Items 0-5 below are the v1 state it starts from.
   2026-10-31: the planner asked for an AI that "has eyes and can experience the road": the plan is at the end of section
   9 ("Eyes and experience"). Its step 1 is done (planner: "go, use the official data and start the logger"): "BAS.MY
   today" is BAS.MY's official timetable (exam.basmy), kelantan.BUS_ASC 323.3, and the GPS logger runs in its own window
@@ -554,7 +568,7 @@ policy +30% better than the baseline on 20 unseen synthetic cities (but not on K
      "keep routes stable" penalty if planners need versions that change little.
 
 =====================================================================
-9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phases 1-3 on 2026-10-29, Phase 4 next)
+9. BRAIN v2 (planned 2026-10-28; Phase 0 done the same day, Phases 1-3 on 2026-10-29, 4 on 2026-11-01, Phase 5 next)
 =====================================================================
 Why. The planner wants "the best AI public transport planning": Kelantan as dependent on public transport as Japan, not
 car-centric. Measured on the saved "Kelantan network" (v1: 382 buses, 60 routes) on 2026-10-28, the old brain optimised
@@ -749,9 +763,40 @@ training); the AI retrains once, in Phase 5, when the rules have settled, so no 
      Known: a hub times every change there (a real timetable can time a route at about two hubs); the map does not draw
      the empty run to the rest place; depots = bus stations; one GA run of 5 min is noisy (a point or two). Saved runs:
      "Phase 3: 64 buses" and the rule tests "Phase 3 test: ...".
-  4. Explanations and stability. Each route says why it exists (riders, the trips it makes direct, who loses what
-     without it) and its role (trunk: a bus every 15 min or better / feeder / coverage). The master network keeps a
-     route unless changing it gains enough.
+  4. Explanations and stability [x] (2026-11-01; the planner: "go phase 4", route ends kept at the 5-min drive). Each
+     route says why it exists and its role (sim.explain, section 2), on the website's Result tab (a role next to each
+     route, a line under it, the count of each role above the list), in the GeoJSON (role, boardings, lost_riders,
+     lost_covered) and the printed report. Unnamed roads read "Route 8", not "8" (kelantan._road: OSM refs). The
+     "Phase 3: 64 buses" design, explained (0.7 s for 16 routes; ~0.06 s an evaluation):
+       64 buses: 0 trunk, 10 feeder, 6 coverage. Route 1 (Jalan Haji Nik Abdullah Arshad -> Mydin): 594 riders a day,
+       192 the whole way, 68% change buses; without it 491 fewer riders and 35,256 people lose their only stop near home.
+       Route 3 (to Klinik Lily): 133 riders; without it the other routes would carry 294 more with its buses, but 31,640
+       people lose their only stop: it runs for coverage. Route 5 (a 3 km shuttle): 6 riders a day, 9,508 people.
+       100 buses (same routes): 5 trunks (a bus every 15 min at a peak), 5 feeder, 6 coverage; 4,969 riders.
+     Stability: Train from "Phase 3: 64 buses", 5 min each (GA, same seed; scratchpad script = server._train without the
+     AI's seeds), judged on the plain score:
+                                    routes changed (of 16)   riders a day   people near a stop   score
+       before                                -                  4,096          476,662           0.05436
+       free (no master)                     1.17                4,037          489,453           0.05342 (-1.7%)
+       keep routes (sim.KEEP 0.01)          0.79                4,061          490,960           0.05322 (-2.1%)
+     The exam (python exam.py, the three runs):  before   free   keep routes
+       covered, all                               25%      26%    26%
+       average of the 6 access tests              30%      31%    31%
+       Wakaf Che Yeh -> HRPZ II                   59 min, 1 change in all three; SK Kota -> KB Mall / AEON: no bus in all
+       routes over 1.5x / ends within a 5-min drive of a rest place: 0 / 16 of 16 in all three
+     -> a third fewer route changes and no loss (one 5-min run each: the 0.4-point gap is noise). In 5 min the GA changes
+     little either way; the rule matters most when Train takes in a whole new design (the AI's every 10 min): it must be
+     ~1% better per route it replaces. Train also numbers each improved route after the master route it pairs with
+     (sim.match), so "Route 3" keeps its number and colour; the GA itself reorders routes (in the test runs, saved
+     outside Train, the numbers moved). Saved runs "Phase 4 test: Train 5 min, free / keep routes".
+     Checked in the browser (2026-11-01, website on port 3001: another project, NADI, held 3000): Result tab of a test
+     run, Train (explanations step aside: "Pause training to see why each route exists"), Pause (they come back: pause
+     always returns the design, ?since=-1).
+     Known: while training, the score shown includes the cost of the routes changed since Train started, so a paused run
+     can show a slightly higher score than its riders alone earn, and resuming (a new master) drops the curve a step; roles
+     are by thresholds (15 min, 30% changing), not a planner's judgement; at 64 buses no route reaches 15 min, so no
+     trunk until ~100 buses (5 then); "riders lost" counts the design re-run with the route's buses moved to the others,
+     "people lose their only stop" keeps the other routes as they stop now.
   5. Reset the AI. Same kind of brain (graph network + REINFORCE + active search, RL + GA: it beat the GA by 9% in
      October), retrained from zero on the new world: the bus budget as an input (one brain for any number of buses =
      the slider), route ends masked to rest places, new stop features (rail, hub, rest place). Laptop: 2 workers,

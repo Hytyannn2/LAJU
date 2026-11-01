@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 import export
 import kelantan
 import routes
-from sim import HEADWAYS, evaluate
+from sim import HEADWAYS, evaluate, explain, match
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
 RL_PROGRESS = Path(__file__).resolve().parent / "models" / "route_gnn.json"  # written by rl.train while the AI trains
@@ -100,9 +100,15 @@ def _routes(d, p, net, lk):
     return [r for r in now if routes.valid(p, [r])]
 
 
-def _output(p, net, rs, req):
+def _output(p, net, rs, req, why=True):
+    """A design as the website shows it; why: also why each route exists (sim.explain: one evaluation per route, so
+    training leaves it out of every improvement and adds it when paused)."""
     m = evaluate(p, rs, detail=True)
-    return kelantan.describe(p, net, rs, m.get("express")) | {
+    nm = net["names"]
+    out = {"why": [w | {"pairs": [[nm[a], nm[b], k] for a, b, k in w["pairs"]], "only": [nm[s] for s in w["only"]]}
+                   for w in explain(p, rs, m)]} if why and "route_boardings" in m else {}
+    m.pop("pairs", None)
+    return out | kelantan.describe(p, net, rs, m.get("express")) | {
         "metrics": m,
         "headways": list(req.headways), "max_route_min": req.max_route_min, "service_hours": p.service_hours,
         "periods": [list(x) for x in kelantan.PERIODS],  # (name, from, to hour): metrics["periods"] has a headway for each
@@ -222,9 +228,12 @@ def _ai(p, net, k, lk, seed):
 def _train(f, d, p, net, k, lk, req, j):
     """Training thread: the genetic algorithm keeps improving the run's routes until j["stop"] is set.
     Starts from the run's current routes, its saved population when resuming, and the deep-RL policy's designs, which it
-    asks again every AI_EVERY_S: the policy keeps getting better while python rl.py trains."""
+    asks again every AI_EVERY_S: the policy keeps getting better while python rl.py trains. The routes it starts from
+    are the master network (p.keep): a design that changes them must win enough to pay for it (sim.KEEP), and each of
+    its routes keeps the number (and colour) of the master route it replaces (sim.match)."""
     tr = d["train"]
     now = _routes(d, p, net, lk)
+    p.keep = tuple(lk + now)
     seeds = tr.get("population", []) + [now]
     h = tr["history"]  # [training seconds, best score]: generation 0, then every improvement
     best = evaluate(p, lk + now)["score"] if h else float("inf")  # by today's rules, which may have changed since
@@ -242,8 +251,8 @@ def _train(f, d, p, net, k, lk, req, j):
                 tr["population"] = [rs for _, rs in scored]
                 if scored[0][0] < best:
                     best = scored[0][0]
-                    d["output"] = j["output"] = _output(p, net, lk + scored[0][1], req)  # before the history: see _status
-                    h.append([round(tr["seconds"], 1), best])
+                    d["output"] = j["output"] = _output(p, net, lk + match(now, scored[0][1])[0], req, why=False)
+                    h.append([round(tr["seconds"], 1), best])  # after the design: see _status
                 if j["stop"].is_set() or time.time() - asked > AI_EVERY_S:
                     break
                 if time.time() - saved > CHECKPOINT_S:
@@ -254,7 +263,10 @@ def _train(f, d, p, net, k, lk, req, j):
         j["error"] = f"training stopped: {err}"
         raise
     finally:
-        _save(f, d)
+        try:  # the best design, now with why each route exists
+            d["output"] = j["output"] = _output(p, net, lk + _routes(d, p, net, lk), req)
+        finally:
+            _save(f, d)
 
 
 def _improve(f, d, p, net, k, lk, req, j):

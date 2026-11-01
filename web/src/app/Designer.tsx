@@ -35,6 +35,17 @@ type Metrics = {
   hubs?: number[]; // key stops where changes are timed (buses meet)
   empty_km_day?: number; // empty runs from depots and back
   electric?: boolean[]; // an electric bus can run the route on its range plus charging in layovers
+  changed?: number; // Phase 4 (2026-11-01): routes changed since training started (each 0-1)
+};
+// Phase 4: why a route exists (engine sim.explain); names of key stops
+type Why = {
+  role: keyof typeof ROLE;
+  boardings: number; // riders boarding it a day
+  direct: number; // of them, riding it the whole way
+  pairs: [string, string, number][]; // the busiest of those trips, both ways
+  lost_riders: number; // without it (its buses on the other routes); below 0 = its buses would carry more elsewhere
+  lost_covered: number; // people whose only stop near home it has
+  only: string[]; // key stops no other route serves
 };
 type Sumo = {
   congestion: { path: LatLng[]; c: number }[];
@@ -56,6 +67,7 @@ export type Design = {
   planner_snap_m: number[];
   periods?: [string, number, number][]; // name, from, to (hour of the day)
   sumo?: Sumo;
+  why?: Why[]; // per route; left out while training (added when paused)
 };
 type Run = {
   id: string;
@@ -129,6 +141,24 @@ const KELANTAN: BBox = [4.5, 101.3, 6.3, 102.7]; // the whole state, as engine/s
 const STATE_NETWORK = "Kelantan network"; // the one saved run the "Kelantan network" button always opens
 const COLORS = ["#60a5fa", "#f87171", "#4ade80", "#c084fc", "#fb923c", "#22d3ee", "#f472b6", "#a3e635"];
 const CATEGORY = { shuttle: "Shuttle", local: "Local", intertown: "Inter-town" }; // engine order: sim.CATEGORIES
+const ROLE = {
+  trunk: ["Trunk", "a main line: a bus every 15 min or better at its busiest"],
+  feeder: ["Feeder", "brings riders to other buses: 30% or more of its riders change"],
+  coverage: ["Coverage", "a bus for the people along it, even where few ride"],
+} as const; // engine sim.TRUNK_MIN, sim.FEEDER_SHARE
+const n0 = (x: number) => Math.round(x).toLocaleString();
+function whyText(w: Why) {
+  const pairs = w.pairs.map(([a, b]) => (a === b ? `along ${a}` : `${a} ↔ ${b}`));
+  const only = [...new Set(w.only)];
+  return (
+    `${n0(w.boardings)} riders a day, ${n0(w.direct)} of them the whole way` +
+    (pairs.length ? ` (most: ${pairs.join("; ")})` : "") +
+    `. Without it: ${w.lost_riders >= 0 ? `${n0(w.lost_riders)} fewer riders` : `its buses would carry ${n0(-w.lost_riders)} more riders on other routes`}` +
+    `, ${n0(w.lost_covered)} people lose their only stop near home` +
+    (only.length ? `; no other bus at ${only.join(", ")}` : "") +
+    "."
+  );
+}
 const OPTIMIZERS: Record<string, string> = {
   baseline: "Baseline (busiest trips first)",
   ga: "Genetic algorithm",
@@ -395,7 +425,7 @@ export default function Designer() {
   function pauseTraining() {
     if (!design) return;
     run("Pausing and saving…", async () => {
-      const s = await call<Train>(`/engine/runs/${design.id}/pause?since=${train?.history.length ?? 0}`, { method: "POST" });
+      const s = await call<Train>(`/engine/runs/${design.id}/pause?since=-1`, { method: "POST" }); // always the design: why each route exists
       if (s.design) setDesign({ id: design.id, ...s.design });
       setTrain(s);
       refreshRuns();
@@ -692,14 +722,23 @@ export default function Designer() {
                 depots · {m.electric?.filter(Boolean).length ?? 0} routes an electric bus can run
               </p>
             )}
+            {design.why && (
+              <p>
+                Routes:{" "}
+                {Object.entries(ROLE)
+                  .map(([k, [label, what]]) => `${design.why!.filter((w) => w.role === k).length} ${label.toLowerCase()} (${what.split(":")[0]})`)
+                  .join(" · ")}
+              </p>
+            )}
             <div className="flex flex-col gap-2 border-y border-neutral-800 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-neutral-400">
                   {train?.history.length
                     ? training && train.mode === "stops"
                       ? `Moving stops onto better roads · try ${train.generation.toLocaleString()}`
-                      : `${training ? "Training" : "Paused"} · generation ${train.generation.toLocaleString()}`
-                    : "Train: the AI keeps improving this design until you pause it."}
+                      : `${training ? "Training" : "Paused"} · generation ${train.generation.toLocaleString()}` +
+                        (m.changed ? ` · ${m.changed.toFixed(1)} of ${design.routes.length} routes changed since it started` : "")
+                    : "Train: the AI keeps improving this design until you pause it. It keeps a route unless changing it wins about 1% more riders."}
                 </span>
                 <div className="flex shrink-0 gap-1 print:hidden">
                   <button className={button} disabled={!!busy} onClick={training ? pauseTraining : () => startTraining()}>
@@ -753,6 +792,7 @@ export default function Designer() {
             <p className="text-neutral-500 print:hidden">
               Tick a route to show it on the map. Each moving yellow dot is a bus, as often as its route runs; 1 s on screen =
               1 min. &quot;Lock&quot; keeps a route as it is in the next design (dashed on the map).
+              {training && !design.why && " Pause training to see why each route exists."}
             </p>
             <ul className="flex flex-col gap-1">
               {design.routes.map((r, i) => {
@@ -771,7 +811,12 @@ export default function Designer() {
                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
                     <span className={`flex-1 ${visible(i) ? "" : "text-neutral-500"}`}>
                       Route {i + 1}
-                      {" "}
+                      {design.why?.[i] && (
+                        <>
+                          {" "}
+                          · <b title={ROLE[design.why[i].role][1]}>{ROLE[design.why[i].role][0]}</b>
+                        </>
+                      )}{" "}
                       · <b>{CATEGORY[m.category[i]]}</b>
                       {m.express[i].some(Boolean) && (
                         <b title="Key stops only, where another bus still stops or where riders gain more than walkers lose">
@@ -788,6 +833,7 @@ export default function Designer() {
                         bus every {m.periods ? m.periods[i].map((h) => h ?? "–").join(" / ") : m.headway[i]} min, {m.buses[i]} buses · peak{" "}
                         {m.peak_hour_load[i]} pax/h
                       </span>
+                      {design.why?.[i] && <span className="block text-xs text-neutral-400">{whyText(design.why[i])}</span>}
                     </span>
                     <button
                       aria-pressed={locked.has(i)}
