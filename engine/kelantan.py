@@ -19,6 +19,7 @@ import csv
 import gzip
 import io
 import json
+import heapq
 import re
 import shutil
 import urllib.request
@@ -34,7 +35,7 @@ from scipy.sparse.csgraph import connected_components, dijkstra
 from scipy.spatial import cKDTree
 
 import routes
-from sim import DWELL_MIN, HEADWAYS, Problem, evaluate
+from sim import DWELL_MIN, HEADWAYS, SCORE_VERSION, Problem, evaluate
 
 CACHE = Path(__file__).resolve().parent / "cache"
 BOX = (101.2, 4.4, 102.8, 6.4)  # lng/lat box around Kelantan
@@ -91,6 +92,9 @@ ALIASES = {"pasir putih": "pasir puteh", "lojing": "gua musang"}  # KPM spelling
 # of the day (PERIODS) set each route's buses per period (sim._share, Phase 3). All planning assumptions until a
 # household survey exists.
 PERIODS = (("morning peak", 6, 9), ("day", 9, 16), ("evening peak", 16, 19), ("night", 19, 24))  # service 6 am - 12 am
+MUST_RUN = (True, True, True, False)  # per period: every route runs its minimum service; at night it may stop where its
+# riders do not pay for the bus (planner, 2026-11-14, plan.md decision 2: equal vehicle-hours with BAS.MY, which runs 2
+# buses at night, is impossible while every route must run all night). sim._share decides which, when a budget binds
 PURPOSES = {  # name: (out trips a day per resident, mean minutes, out shares per period, back shares per period)
     "work": (None, 20, (0.75, 0.20, 0.05, 0.0), (0.0, 0.15, 0.65, 0.20)),      # rate: WORKERS
     "school": (None, 10, (0.95, 0.05, 0.0, 0.0), (0.0, 0.60, 0.40, 0.0)),      # rate: KPM's pupils in the district
@@ -128,7 +132,9 @@ BUS_ASC = 323.3      # felt minutes the bus loses to a motorbike before any minu
                      # day, as BAS.MY reports (84,000 a month, Q4 2025; 2026-10-31; traced routes: 315 with buses all day,
                      # 301.1 with none at night). That large: in Kelantan the motorbike wins ~99.9% of trips today
 BUSES = 64           # buses when the planner sets none: what BAS.MY owns in Kelantan (2026)
-COVER_WEIGHT = 0.03  # a person within STOP_M of a served stop counts as this many daily riders: "coverage first", the
+COVER_WEIGHT = 0.0   # score v4 (planner, 2026-11-08): only riders count; coverage is the floor MIN_COVER. Was 0.03 =
+                     # 0.03 riders a person near a stop, three quarters of the score, so designs spread thin. Before:
+                     # a person within STOP_M of a served stop counts as this many daily riders: "coverage first", the
                      # planner's pick (2026-10-29) from GA 5-min designs on 64 buses: 0 -> 6,316 riders a day, 20% of
                      # people near a stop; 0.01 -> 4,932, 25%; 0.03 -> 4,722, 28% and the best access tests
 # Route ends and hubs (brain v2 Phase 3, 2026-10-29). A route ends only where a bus can turn, wait and its driver rest
@@ -137,11 +143,21 @@ COVER_WEIGHT = 0.03  # a person within STOP_M of a served stop counts as this ma
 REST_KINDS = ("bus_station", "rail", "mall", "hospital", "university", "college", "stadium")  # places with room to wait
 HUB_KINDS = ("bus_station", "rail")  # changes there are timed (sim.TIMED_MIN); bus stations are also where buses sleep
 REST_M = 300         # a stop this near a rest place is at it (the exam; a station's stop is a hub)
+MIN_ROUTE_MIN = 15   # minutes one way a route should take at least (sim.SHORT): the GA and the AI made 2-8 min stubs for
+                     # coverage (2026-11-07); BAS.MY's shortest runs 24
 REST_RUN = 10        # minutes there and back a route end may lie from a rest place (5 min each way): GA 5 min on 64 buses
                      # with REST_M instead (2026-10-29): riders 2,907 vs 5,696, people near a stop 21% vs 25%
 BIG_PARK_M2 = 2500   # a car park this big (~100 cars) has room for a bus to wait; roundabouts let it turn
 TOWN_PER_KM2 = 1000  # a home in a population hexagon this dense is "town"
 STOP_M = (400, 800)  # town, rural: how near a stop counts as covered (planner, 2026-10-28)
+MIN_COVER = 0.25    # share of the people in view who should live within STOP_M of a stop with a bus (sim.COVER_SHORT):
+                    # what coverage first reached on 64 buses (Phase 3, GA). BAS.MY today reaches 30% partly with routes
+                    # run 3 times a day, below the minimum service (sim.CATEGORIES); a 30% floor drove a GA design to 74
+                    # buses and still 25% (2026-11-08)
+ROAD_STOP_PEOPLE = 1000  # a stop-able road spot that brings this many more people within STOP_M of a stop becomes a key stop
+                         # (road_stops): links ran only along the quickest road between key stops, so roads beside it, e.g.
+                         # Jalan Pintu Geng, never had a bus; the whole state gets 86 more, people near the graph 57% -> 63%+
+                         # (planner, 2026-11-08)
 PEOPLE_NEAR_M = 485  # "people nearby" for intermediate stops: a circle as big as one population hexagon (H3, 0.74 km2)
 OSM = "https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf"
 KONTUR = "https://geodata-eu-central-1-kontur-public.s3.amazonaws.com/kontur_datasets/kontur_population_MY_20231101.gpkg.gz"
@@ -597,12 +613,45 @@ def demand():
     return trips[0], trips[1], beta, *ends
 
 
-def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0, max_km=0.0, max_route_min=0.0, spots=None):
+def road_stops(R, nodes, mids, bP, bpop, rad, bbox):
+    """Road nodes for key stops on populated roads no stop of the graph is near: greedily the stop-able spot within rad
+    (STOP_M) of the most people not yet near a key stop or a link stop, until a spot adds fewer than ROAD_STOP_PEOPLE."""
+    served = np.r_[np.asarray(nodes, int), [v for m in mids.values() for v in m]].astype(int)
+    un = np.flatnonzero(cKDTree(R["P"][served]).query(bP)[0] > rad)
+    s, w, n, e = bbox
+    cand = np.flatnonzero(R["stop_ok"] & (R["lat"] >= s) & (R["lat"] <= n) & (R["lng"] >= w) & (R["lng"] <= e))
+    if not len(un) or not len(cand):
+        return np.zeros(0, int)
+    by = defaultdict(list)  # candidate -> the far-off buildings it would bring near
+    for h, cs in zip(un, cKDTree(R["P"][cand]).query_ball_point(bP[un], rad[un])):
+        for c in cs:
+            by[c].append(h)
+    by = {c: np.array(h) for c, h in by.items()}
+    heap = [(-bpop[h].sum(), c) for c, h in by.items()]
+    heapq.heapify(heap)
+    done, out = np.zeros(len(bP), bool), []
+    while heap:  # lazy greedy: a spot's gain only falls as others are picked
+        _, c = heapq.heappop(heap)
+        g = bpop[by[c]][~done[by[c]]].sum()
+        if g < ROAD_STOP_PEOPLE:
+            continue
+        if heap and g < -heap[0][0]:
+            heapq.heappush(heap, (-g, c))
+            continue
+        out.append(cand[c])
+        done[by[c]] = True
+    return np.array(out, int)
+
+
+def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0, max_km=0.0, max_route_min=0.0, spots=None,
+          budget_vh=0.0, budget_km=0.0, must_run=MUST_RUN):
     """Stop graph for bbox = (south, west, north, east).
 
     forced: planner stops [{"lat", "lng", "name", "demand"}], kept but moved to the nearest place a bus may stop.
     locked: planner routes, each a list of such stops; returned as stop-index routes in net["locked"].
     spots: road nodes for the AI's key stops (a design whose stops were moved, improve_stops); None = place them.
+    budget_vh, budget_km: vehicle-hours and bus-km a day the routes may run, 0 = no limit (plan.md T-A3: equal
+    resources with BAS.MY); must_run: per period, whether every route must run then (MUST_RUN).
     """
     R, (lat, lng, pop, year) = roads(), population()
     s, w, n, e = bbox
@@ -653,42 +702,60 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
     zone_of[nodes] = np.arange(K)
     planner_zone = zone_of[pick[: len(planner)]]
 
-    # 2. Neighbouring key stops (their road catchments touch) and the road between them.
-    _, _, src = dijkstra(R["G"], indices=nodes, min_only=True, return_predecessors=True, limit=60)
-    cell = np.where(src >= 0, zone_of[np.maximum(src, 0)], -1)
-    cu, cv = cell[R["u"]], cell[R["v"]]
-    ok = (cu >= 0) & (cv >= 0) & (cu != cv)
-    nb = defaultdict(set)
-    for a, b in np.unique(np.sort(np.column_stack([cu[ok], cv[ok]]), 1), axis=0):
-        nb[a].add(b)
-        nb[b].add(a)
-    T, paths = np.full((K, K), np.inf), {}
-    for a in range(K):
-        dist, pred = dijkstra(R["G"], indices=nodes[a], return_predecessors=True, limit=120)
-        T[a] = dist[nodes]
-        # Neighbours and neighbours-of-neighbours: a key stop on a side road must not force a detour into it.
-        for b in {c for x in nb[a] | {a} for c in nb[x]}:
-            if b > a and np.isfinite(dist[nodes[b]]):
-                pth = [nodes[b]]
-                while pth[-1] != nodes[a]:
-                    pth.append(pred[pth[-1]])
-                if not (zone_of[pth[1:-1]] >= 0).any():  # passing another key stop: a-x-b is the real link
-                    paths[a, b] = np.array(pth[::-1])
+    town = (hpop / 0.74)[cKDTree(hP).query(bP)[1]] >= TOWN_PER_KM2  # H3 hexagons: 0.74 km2
 
-    # 3. Intermediate stops along each link: on stop-able road, spaced by how many people live there.
-    ptree, ppl = _people_tree()
-    reg, mids, km = set(nodes.tolist()), {}, np.full((K, K), np.inf)
-    for (a, b), pth in sorted(paths.items()):
-        cum = np.r_[0, np.cumsum(np.asarray(R["K"][pth[:-1], pth[1:]]).ravel())] * 1000
-        km[a, b] = km[b, a] = cum[-1] / 1000
-        nearby = np.array([ppl[ix].sum() for ix in ptree.query_ball_point(R["P"][pth], PEOPLE_NEAR_M)])
-        last, mids[a, b] = 0.0, []
-        for k in range(1, len(pth) - 1):
-            v, gap = int(pth[k]), next(g for p_, g in SPACING_M if nearby[k] >= p_)
-            if v in reg or (R["stop_ok"][v] and nearby[k] >= MIN_PEOPLE and cum[k] - last >= gap and cum[-1] - cum[k] >= gap / 2):
-                reg.add(v)
-                mids[a, b].append(v)
-                last = cum[k]
+    def graph(nodes):
+        """Steps 2-3 for these key stops -> (T, paths, mids, km)."""
+        K = len(nodes)
+        zone_of = np.full(N, -1)
+        zone_of[nodes] = np.arange(K)
+        # 2. Neighbouring key stops (their road catchments touch) and the road between them.
+        _, _, src = dijkstra(R["G"], indices=nodes, min_only=True, return_predecessors=True, limit=60)
+        cell = np.where(src >= 0, zone_of[np.maximum(src, 0)], -1)
+        cu, cv = cell[R["u"]], cell[R["v"]]
+        ok = (cu >= 0) & (cv >= 0) & (cu != cv)
+        nb = defaultdict(set)
+        for a, b in np.unique(np.sort(np.column_stack([cu[ok], cv[ok]]), 1), axis=0):
+            nb[a].add(b)
+            nb[b].add(a)
+        T, paths = np.full((K, K), np.inf), {}
+        for a in range(K):
+            dist, pred = dijkstra(R["G"], indices=nodes[a], return_predecessors=True, limit=120)
+            T[a] = dist[nodes]
+            # Neighbours and neighbours-of-neighbours: a key stop on a side road must not force a detour into it.
+            for b in {c for x in nb[a] | {a} for c in nb[x]}:
+                if b > a and np.isfinite(dist[nodes[b]]):
+                    pth = [nodes[b]]
+                    while pth[-1] != nodes[a]:
+                        pth.append(pred[pth[-1]])
+                    if not (zone_of[pth[1:-1]] >= 0).any():  # passing another key stop: a-x-b is the real link
+                        paths[a, b] = np.array(pth[::-1])
+
+        # 3. Intermediate stops along each link: on stop-able road, spaced by how many people live there.
+        ptree, ppl = _people_tree()
+        reg, mids, km = set(nodes.tolist()), {}, np.full((K, K), np.inf)
+        for (a, b), pth in sorted(paths.items()):
+            cum = np.r_[0, np.cumsum(np.asarray(R["K"][pth[:-1], pth[1:]]).ravel())] * 1000
+            km[a, b] = km[b, a] = cum[-1] / 1000
+            nearby = np.array([ppl[ix].sum() for ix in ptree.query_ball_point(R["P"][pth], PEOPLE_NEAR_M)])
+            last, mids[a, b] = 0.0, []
+            for k in range(1, len(pth) - 1):
+                v, gap = int(pth[k]), next(g for p_, g in SPACING_M if nearby[k] >= p_)
+                if v in reg or (R["stop_ok"][v] and nearby[k] >= MIN_PEOPLE and cum[k] - last >= gap and cum[-1] - cum[k] >= gap / 2):
+                    reg.add(v)
+                    mids[a, b].append(v)
+                    last = cum[k]
+        return T, paths, mids, km
+
+    T, paths, mids, km = graph(nodes)
+    # 2b. Road stops: a populated road no link comes near (a road beside a quicker one, e.g. Jalan Pintu Geng) gets key
+    # stops, so links run along it; the graph is then drawn again. Not part of `spots`: the same spots give the same ones.
+    extra = road_stops(R, nodes, mids, bP, bpop, np.where(town, *STOP_M), bbox)
+    if len(extra):
+        nodes = np.r_[nodes, extra]
+        K = len(nodes)
+        T, paths, mids, km = graph(nodes)
+
     time, n_mid = np.full((K, K), np.inf), np.zeros((K, K), int)
     for (a, b), m in mids.items():
         time[a, b], time[b, a] = T[a, b] + DWELL_MIN * len(m), T[b, a] + DWELL_MIN * len(m)
@@ -752,7 +819,6 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
         for v in mids[ab]:
             items[int(v)].append(K + i)
     sv = np.array(list(items))
-    town = (hpop / 0.74)[cKDTree(hP).query(bP)[1]] >= TOWN_PER_KM2  # H3 hexagons: 0.74 km2
     cells = defaultdict(float)
     for h, close in enumerate(cKDTree(R["P"][sv]).query_ball_point(bP, np.where(town, *STOP_M))):
         if close:
@@ -765,17 +831,18 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
     # key stops at a bus or rail station (timed transfers), the empty run from the nearest depot and back.
     rest_min, depot_km = bases()
     rest_end = rest_min[nodes] <= REST_RUN
-    hub_kinds = [x for x in places() if x["kind"] in HUB_KINDS]
-    hubs = cKDTree(_m([x["lat"] for x in hub_kinds], [x["lng"] for x in hub_kinds])).query(zP)[0] <= REST_M
+    at = lambda kinds: cKDTree(_m(*np.array([(x["lat"], x["lng"]) for x in places() if x["kind"] in kinds]).T)).query(zP)[0] <= REST_M
 
     p = Problem(time=time, od=od.sum(0), xy=np.column_stack([R["lng"][nodes], R["lat"][nodes]]), km=km, min_len=2, max_len=15,
                 headways=tuple(headways), mids=n_mid, walk=walk, walk_save=walk_save, walk_weight=WALK_WEIGHT, vot=VOT_RM_H / 60, unserved_cost=UNSERVED_RM,
                 transfer_min=TRANSFER_MIN, max_transfers=MAX_TRANSFERS, service_hours=sum(b - a for _, a, b in PERIODS),
-                max_buses=max_buses, max_km=max_km, max_route_min=max_route_min, max_detour=MAX_DETOUR, uturn=uturn,
-                od_captive=cap.sum(0), asc=BUS_ASC, budget=max_buses or BUSES, cover_cells=cover_cells,
+                max_buses=max_buses, max_km=max_km, max_route_min=max_route_min, min_route_min=MIN_ROUTE_MIN, max_detour=MAX_DETOUR, uturn=uturn,
+                od_captive=cap.sum(0), asc=_asc(), budget=max_buses or BUSES, cover_cells=cover_cells,
                 cover_pop=np.array(list(cells.values())), cover_links=np.array(links, int).reshape(-1, 2),
-                cover_weight=COVER_WEIGHT, period_h=tuple(b - a for _, a, b in PERIODS), od_k=od, captive_k=cap,
-                hubs=hubs, rest_min=rest_min[nodes], rest_end=rest_end, depot_km=depot_km[nodes])
+                cover_weight=COVER_WEIGHT, min_cover=MIN_COVER * float(bpop.sum()), period_h=tuple(b - a for _, a, b in PERIODS), od_k=od, captive_k=cap,
+                hubs=at(HUB_KINDS), rail=at(("rail",)), rest_min=rest_min[nodes], rest_end=rest_end, depot_km=depot_km[nodes],
+                version=SCORE_VERSION)
+    p.budget_vh, p.budget_km, p.must_run = float(budget_vh), float(budget_km), tuple(must_run)
     road = np.where(np.isfinite(T), T, routes.quickest(p)[0])  # T stops at 120 min; beyond, the bus's own quickest
     p.drive = CAR_FACTOR * road + 2 * DRIVE_ACCESS_MIN
 
@@ -803,6 +870,14 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
            "planner_snap_m": snap[: len(planner)].round().tolist(), "people": float(bpop.sum()), "dosm_year": year,
            "trips": float(od.sum())}
     return p, net
+
+
+def _asc():
+    """BUS_ASC as calib.py last fitted it on today's graph (cache/calibration.json), else the constant (plan.md T-A2)."""
+    try:
+        return float(json.loads((CACHE / "calibration.json").read_text())["asc"])
+    except (FileNotFoundError, KeyError, ValueError):
+        return BUS_ASC
 
 
 def _road(name):

@@ -56,7 +56,7 @@ def baseline(p, n_routes, locked=()):
         left[np.ix_(r, r)] = 0
     while len(rs) < n_routes and left.max() > 0:
         i, j = np.unravel_index(left.argmax(), left.shape)
-        r = trim(p, unturn(p, path(pred, i, j)))
+        r = settle(p, trim(p, unturn(p, path(pred, i, j))))
         rs.append(r)
         left[np.ix_(r, r)] = left[i, j] = left[j, i] = 0
     return rs

@@ -4,7 +4,9 @@ hour and road, delays against the timetable, buses really in service. Standard l
 its own window; a sleeping laptop or a dropped connection leaves gaps. The feed carries only each bus's trip id, position,
 bearing and time: route, direction, speed, stop and status are LAJU's estimates (--fill); occupancy nothing tells.
 
-    python gps.py          -> logs until STOP_HOUR or its window is closed (restarting appends; a second copy exits)
+    python gps.py          -> logs until its window is closed; after 2 h with no new bus position (night) it naps, one
+                              look every 10 min, and logs every 30 s again once a bus moves (restarting appends; a
+                              second copy exits)
     Start GPS logger.bat   -> the same in its own minimized window (the LAJU folder): by double-click, and every day at
                               06:00 by the Windows task "LAJU GPS logger"
     python gps.py --fill   -> cache/gps/filled/<date>.csv: every day's log with the empty columns worked out
@@ -23,7 +25,9 @@ from pathlib import Path
 FEED = "https://api.data.gov.my/gtfs-realtime/vehicle-position/mybas-kota-bharu"
 OUT = Path(__file__).resolve().parent / "cache" / "gps"
 EVERY_S = 30
-STOP_HOUR = 23  # no bus reported after 22:03 on Sunday 2026-11-01; check against weekdays
+IDLE_S, NAP_S = 7200, 600  # no new position for 2 h (the buses sleep at night): one look every 10 min until one moves.
+# It ended there before (2026-11-08), counting on the 06:00 task to start it again; asleep at 06:00, the laptop missed
+# the task and Sunday's buses went unlogged
 LOCK_PORT = 47613  # one logger at a time: the one holding this local port
 COLUMNS = ("bus", "plate", "trip", "route", "direction", "lat", "lng", "bearing", "speed_ms", "stop", "status", "occupancy",
            "time")
@@ -117,12 +121,6 @@ def fill(rows, ways):
         yield r
 
 
-def until(now):
-    """When a logger started at `now` stops for the night: the next STOP_HOUR."""
-    stop = now.replace(hour=STOP_HOUR, minute=0, second=0, microsecond=0)
-    return stop if now < stop else stop + datetime.timedelta(days=1)
-
-
 def main():
     lock = socket.socket()
     try:
@@ -132,8 +130,8 @@ def main():
         return
     OUT.mkdir(parents=True, exist_ok=True)
     seen = {}  # bus -> time of its last report written
-    stop = until(datetime.datetime.now())
-    while datetime.datetime.now() < stop:
+    last = time.time()  # the last new position, or the start
+    while True:
         t0 = time.time()
         try:
             with urllib.request.urlopen(FEED, timeout=20) as r:
@@ -146,10 +144,13 @@ def main():
                     w.writerow(COLUMNS)
                 w.writerows(rows)
             seen.update((x[0], x[-1]) for x in rows)
-            print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S}  {len(rows)} new positions", flush=True)
+            last = time.time() if rows else last
+            print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S}  {len(rows)} new positions"
+                  + ("  (no bus for 2 h: next look in 10 min)" if not rows and time.time() - last > IDLE_S else ""), flush=True)
         except Exception as err:  # no connection, a feed hiccup, OneDrive holding the file: try again next round
             print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S}  skipped: {err}", flush=True)
-        time.sleep(max(1.0, EVERY_S - (time.time() - t0)))
+        nap = time.time() - last > IDLE_S
+        time.sleep(max(1.0, (NAP_S if nap else EVERY_S) - (time.time() - t0)))
 
 
 if __name__ == "__main__":
@@ -203,7 +204,4 @@ if __name__ == "__main__":
                    ("D32", "1", 1.5, "STOPPED_AT", "B"), ("D32", "1", "", "IN_TRANSIT_TO", "C"),  # creeps; after a gap
                    ("", "", "", "", "")], got  # no trip
 
-    day = datetime.datetime(2026, 11, 1)
-    assert until(day.replace(hour=6)) == day.replace(hour=STOP_HOUR)
-    assert until(day.replace(hour=STOP_HOUR, minute=30)) == day.replace(day=2, hour=STOP_HOUR)  # started late: tomorrow's
     print("ok", rows[0])

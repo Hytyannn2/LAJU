@@ -7,15 +7,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
+import numpy as np
 import shapely
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+import experiments
 import export
 import kelantan
 import routes
-from sim import HEADWAYS, evaluate, explain, match
+import sim
+from sim import HEADWAYS, SCORE_VERSION, evaluate, explain, match
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
 RL_PROGRESS = Path(__file__).resolve().parent / "models" / "route_gnn.json"  # written by rl.train while the AI trains
@@ -48,6 +51,8 @@ class DesignRequest(BaseModel):
     headways: tuple[Headway, Headway, Headway] = HEADWAYS  # shuttle, local, inter-town: a bus at least this often
     max_buses: int = Field(0, ge=0, le=5000)
     max_km: float = Field(0, ge=0, le=10_000)
+    max_vh: float = Field(0, ge=0, le=100_000)  # vehicle-hours a day the routes may run, 0 = no limit (plan.md T-A3)
+    max_bus_km: float = Field(0, ge=0, le=1_000_000)  # bus-km a day, 0 = no limit: with max_vh, BAS.MY's = equal resources
     max_route_min: float = Field(90, ge=0, le=600)  # longest one-way trip of a route, 0 = no limit
     forced: list[Stop] = Field([], max_length=200)
     locked: list[list[Stop]] = Field([], max_length=60)
@@ -87,7 +92,7 @@ def _problem(req):
     try:
         p, net = kelantan.build(bbox, req.n_stops, [x.model_dump() for x in req.forced],
                                 [[x.model_dump() for x in r] for r in req.locked], req.headways, req.max_buses, req.max_km,
-                                req.max_route_min, req.spots or None)
+                                req.max_route_min, req.spots or None, req.max_vh, req.max_bus_km)
     except (ValueError, FileNotFoundError) as err:
         raise HTTPException(422, str(err))
     return p, net, max(req.n_routes, len(req.locked)), net["locked"]
@@ -97,7 +102,12 @@ def _routes(d, p, net, lk):
     """A saved run's free routes as key-stop indices on today's stop graph; routes it no longer allows are dropped."""
     key = {int(v): z for z, v in enumerate(net["nodes"])}
     now = [[key[int(s[1:])] for s in r["stops"] if int(s[1:]) in key] for r in d["output"]["routes"]][len(lk):]
-    return [r for r in now if routes.valid(p, [r])]
+    if any(not np.isfinite(p.time[a, b]) for r in now for a, b in zip(r, r[1:])):  # stops no longer neighbours (a road
+        _, pred = routes.quickest(p)  # stop came between them, kelantan.road_stops): joined the quickest way, as locked
+        now = [r[:1] + [x for a, b in zip(r, r[1:]) for x in (routes.path(pred, a, b)[1:] if pred[a, b] >= 0 else [b])]
+               for r in now]
+    return [r for r in now if len(r) >= p.min_len and len(set(r)) == len(r) and all(np.isfinite(p.time[a, b])
+                                                                                   for a, b in zip(r, r[1:]))]
 
 
 def _output(p, net, rs, req, why=True):
@@ -109,7 +119,7 @@ def _output(p, net, rs, req, why=True):
                    for w in explain(p, rs, m)]} if why and "route_boardings" in m else {}
     m.pop("pairs", None)
     return out | kelantan.describe(p, net, rs, m.get("express")) | {
-        "metrics": m,
+        "metrics": m, "score_version": SCORE_VERSION,
         "headways": list(req.headways), "max_route_min": req.max_route_min, "service_hours": p.service_hours,
         "periods": [list(x) for x in kelantan.PERIODS],  # (name, from, to hour): metrics["periods"] has a headway for each
         "people": net["people"], "trips": net["trips"], "dosm_year": net["dosm_year"],
@@ -141,6 +151,7 @@ def boundary():
 
 @app.post("/design")
 def design(req: DesignRequest):
+    t0, e0 = time.time(), sim.EVALS
     p, net, k, lk = _problem(req)
     try:
         if req.optimizer == "baseline":
@@ -156,7 +167,11 @@ def design(req: DesignRequest):
     out = _output(p, net, rs, req)
     RESULTS.mkdir(exist_ok=True)
     rid = f"run-{datetime.now():%Y%m%d-%H%M%S-%f}"
-    _save(RESULTS / f"{rid}.json", {"input": req.model_dump(), "output": out})
+    m = out["metrics"]
+    exp = experiments.record("design", req.model_dump(), {"run": rid} | {x: m.get(x) for x in (
+        "score", "riders", "boardings", "covered", "fleet", "fleet_k", "bus_km_day", "vh_day", "over")},
+        seeds={"ga": 0, "policy": 0}, evals=sim.EVALS - e0, start=t0)  # ponytail: evals include a Train thread's meanwhile
+    _save(RESULTS / f"{rid}.json", {"input": req.model_dump(), "output": out, "exp": exp.stem})
     return {"id": rid, **out}
 
 

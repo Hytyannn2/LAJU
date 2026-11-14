@@ -39,7 +39,7 @@ from scipy.spatial import cKDTree
 
 import kelantan
 import routes
-from sim import DWELL_MIN, LAYOVER_MIN, TIMED_MIN, UTURN_MIN, electric, evaluate, quickest
+from sim import DWELL_MIN, LAYOVER_MIN, SCORE_VERSION, TIMED_MIN, UTURN_MIN, electric, evaluate, quickest
 
 HERE = Path(__file__).resolve().parent
 TARGETS = HERE / "cache" / "exam_places.json"  # the exam's destinations, rebuilt from OSM when deleted
@@ -329,7 +329,8 @@ def load(name):
         t = d["timetable"]
         return p, net, rs, [[math.inf if h is None else h for h in x["periods"]] for x in t], None, t, []
     m = d["output"]["metrics"]
-    if len(m["headway"]) != len(rs) or len(m["express"]) != len(rs):
+    if len(m["headway"]) != len(rs) or len(m["express"]) != len(rs) or any(len(e) != len(r) - 1 for e, r in zip(m["express"], rs)):
+        # a route re-joined through a new road stop (server._routes) has more links than its saved express flags
         m = evaluate(p, rs, detail=True)
     heads = [[math.inf if h is None else h for h in x] for x in m["periods"]] if "periods" in m else m["headway"]
     return p, net, rs, heads, m["express"], None, m.get("hubs", [])  # runs before Phase 3: one headway all day
@@ -366,6 +367,7 @@ def save_basmy():
 def report(names, results):
     w = 26
     row = lambda label, xs: print(f"{label:<34}" + "".join(f"{x:>{w}}" for x in xs))
+    print(f"(LAJU designs run at the headways sim.py score {SCORE_VERSION} gives them)")
     row("", names)
     row("routes / stops / buses", [f"{e['routes']} / {e['stops']} / {e['buses']}" for e in results])
     row("buses: peak / day / eve / night", [" / ".join(map(str, e["buses_k"])) for e in results])

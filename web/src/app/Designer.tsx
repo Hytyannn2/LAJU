@@ -120,6 +120,7 @@ type School = {
 // The AI's own design of the Kelantan network while it trains (engine rl.frame), redrawn every few seconds.
 type Live = {
   n: number;
+  name?: string; // the saved run whose map it designs (engine rl.TARGET); before 2026-11-07 the Kelantan network
   seconds: number;
   now: Omit<Design, "id">;
   best: Omit<Design, "id">;
@@ -280,6 +281,7 @@ export default function Designer() {
   const [school, setSchool] = useState<School | null>(null);
   const [live, setLive] = useState<Live | null>(null);
   const [liveView, setLiveView] = useState<"now" | "best">("now");
+  const [wide, setWide] = useState(false); // the map fills the window
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("design");
   const [showBuses, setShowBuses] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -465,7 +467,8 @@ export default function Designer() {
     setShown({ id: design.id, routes: next });
   };
   const pair = compare.map((id) => runs.find((r) => r.id === id)).filter((r): r is Run => !!r);
-  const state = runs.find((r) => r.name === STATE_NETWORK);
+  const shownName = live?.name ?? STATE_NETWORK; // the run whose map the AI training tab draws
+  const state = runs.find((r) => r.name === shownName);
   const onMap = tab === "ai" && live ? { id: `ai-${liveView}`, ...live[liveView] } : null; // the AI's live design, else ours
   const quiet = train?.history.length ? train.seconds - train.history[train.history.length - 1][0] : 0; // training time since the last better design
 
@@ -619,7 +622,7 @@ export default function Designer() {
           <section className="flex flex-col gap-2 rounded border border-neutral-800 p-3 print:hidden">
             <h2 className="font-semibold">The AI designing Kelantan{school?.running ? " · live" : " · last training"}</h2>
             <p className="text-neutral-400">
-              The map shows the AI&apos;s own design of the {STATE_NETWORK} ({live.now.routes.length} routes), redrawn every few
+              The map shows the AI&apos;s own design of the map of &quot;{shownName}&quot; ({live.now.routes.length} routes), redrawn every few
               seconds from what it has learned so far: the lines move as it learns. This is the AI alone, before any genetic
               algorithm.
             </p>
@@ -636,8 +639,7 @@ export default function Designer() {
             </p>
             {state && (
               <p className="text-neutral-400">
-                Your {STATE_NETWORK} (green button): score {state.score.toFixed(3)}, no bus within 2 changes {pct(state.unserved)}. Its training
-                takes in the AI&apos;s latest designs every 10 minutes.
+                &quot;{shownName}&quot; as saved: score {state.score.toFixed(3)}, no bus within 2 changes {pct(state.unserved)}.
               </p>
             )}
           </section>
@@ -979,7 +981,13 @@ export default function Designer() {
         </div>
       )}
 
-      <div className="min-h-[50vh] flex-1 print:h-[600px]">
+      <div className={`${wide ? "fixed inset-0 z-[1500] bg-neutral-950" : "relative min-h-[50vh] flex-1"} print:h-[600px]`}>
+        <button
+          className="absolute top-2.5 left-14 z-[1000] rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm hover:bg-neutral-800 print:hidden"
+          onClick={() => setWide(!wide)}
+        >
+          {wide ? "Exit full screen" : "Full screen"}
+        </button>
         <MapView
           design={onMap ?? design}
           colors={COLORS}
