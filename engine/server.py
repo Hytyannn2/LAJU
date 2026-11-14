@@ -168,7 +168,11 @@ def design(req: DesignRequest):
 
                 s = min(60.0, req.seconds / 4)
                 seeds = [x for _, x in search.sample(p, k, n=10**9, seconds=s, locked=lk)[:8]]
-                rs = routes.ga(p, k, lk, max(1.0, req.seconds - s), seeds=seeds)
+                left = max(1.0, req.seconds - s)
+                if seeds:  # T-B2: destroy-and-repair from the best sample for half the rest, then the GA
+                    seeds.insert(0, search.lns(p, k, seeds[0], left / 2, lk))
+                    left /= 2
+                rs = routes.ga(p, k, lk, left, seeds=seeds)
     except (ValueError, FileNotFoundError) as err:
         raise HTTPException(422, str(err))
     out = _output(p, net, rs, req)
