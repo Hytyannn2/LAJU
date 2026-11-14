@@ -161,7 +161,14 @@ def design(req: DesignRequest):
         else:
             import rl
 
-            rs = rl.design(p, k, lk, req.seconds) if req.optimizer == "rl" else routes.ga(p, k, lk, req.seconds, seeds=rl.samples(p, k, 8, lk))
+            if req.optimizer == "rl":
+                rs = rl.design(p, k, lk, req.seconds)
+            else:  # T-B1: sample wide for a quarter of the time (60 s at most), the GA starts from the best 8
+                import search
+
+                s = min(60.0, req.seconds / 4)
+                seeds = [x for _, x in search.sample(p, k, n=10**9, seconds=s, locked=lk)[:8]]
+                rs = routes.ga(p, k, lk, max(1.0, req.seconds - s), seeds=seeds)
     except (ValueError, FileNotFoundError) as err:
         raise HTTPException(422, str(err))
     out = _output(p, net, rs, req)
