@@ -62,19 +62,57 @@ def baseline(p, n_routes, locked=()):
     return rs
 
 
-def ga(p, n_routes, locked=(), seconds=20.0, pop=40, seed=0, seeds=()):
+_P = _LOCKED = None
+
+
+def _init(p, locked):
+    global _P, _LOCKED
+    _P, _LOCKED = p, [list(r) for r in locked]
+
+
+def _fit(rs):
+    return evaluate(_P, _LOCKED + rs)["score"]
+
+
+def free_gb():
+    """Free physical memory in GB (Windows; elsewhere infinite)."""
+    import ctypes
+
+    class M(ctypes.Structure):
+        _fields_ = [("len", ctypes.c_ulong), ("load", ctypes.c_ulong)] + [(f, ctypes.c_ulonglong) for f in
+                    ("total", "avail", "ptotal", "pavail", "vtotal", "vavail", "xavail")]
+    try:
+        m = M(len=ctypes.sizeof(M))
+        ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
+        return m.avail / 2**30
+    except AttributeError:
+        return float("inf")
+
+
+def pool(p, locked=(), n=4):
+    """Worker processes that score route sets for evolve (plan.md T-B3), or None under 3 GB free memory.
+    The caller closes it (pool.terminate()) in a finally."""
+    if free_gb() < 3:
+        return None
+    import multiprocessing
+
+    return multiprocessing.Pool(n, initializer=_init, initargs=(p, locked))
+
+
+def ga(p, n_routes, locked=(), seconds=20.0, pop=40, seed=0, seeds=(), pool=None):
     """Best route set found within `seconds`. Locked routes are kept as-is; `seeds` are extra starting route sets."""
     if n_routes <= len(locked):
         return [list(r) for r in locked]
     deadline = time.time() + seconds
-    for scored in evolve(p, n_routes, locked, pop, seed, seeds):
+    for scored in evolve(p, n_routes, locked, pop, seed, seeds, pool):
         if time.time() >= deadline:
             return [list(r) for r in locked] + scored[0][1]
 
 
-def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=()):
+def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=(), pool=None):
     """Yields the population after every generation, forever: [(score, free routes)], best first.
-    Needs at least one route that is not locked."""
+    Needs at least one route that is not locked. With a pool (routes.pool, same p and locked) children are scored in
+    parallel; results match the serial run for a seed."""
     rng = random.Random(seed)
     n = len(p.od)
     locked = [list(r) for r in locked]
@@ -131,12 +169,12 @@ def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=()):
             rs[k] = settle(p, r)
         return rs
 
-    def fit(rs):
-        return evaluate(p, locked + rs)["score"]
+    def fit(xs):
+        return list(zip(pool.map(_fit, xs) if pool else [evaluate(p, locked + rs)["score"] for rs in xs], xs))
 
     start = [fill(baseline(p, n_routes, locked)[len(locked):])] + [fill(s) for s in seeds]
     start += [fill([]) for _ in range(pop - len(start))]
-    scored = sorted(((fit(x), x) for x in start), key=lambda t: t[0])
+    scored = sorted(fit(start), key=lambda t: t[0])
 
     def pick():
         return min(rng.sample(scored, 2), key=lambda t: t[0])[1]
@@ -144,7 +182,7 @@ def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=()):
     while True:
         yield scored
         kids = [mutate(cross(pick(), pick())) for _ in range(pop - 2)]
-        scored = sorted(scored[:2] + [(fit(x), x) for x in kids], key=lambda t: t[0])
+        scored = sorted(scored[:2] + fit(kids), key=lambda t: t[0])
 
 
 def valid(p, rs):
@@ -188,4 +226,10 @@ if __name__ == "__main__":
     gen = evolve(p, 4)
     rest = [next(gen)[0][1] for _ in range(30)][-1]
     assert all(p.rest_end[r[0]] and p.rest_end[r[-1]] for r in rest), rest
+    import multiprocessing  # T-B3: a pool gives the serial run's result for the same seed
+
+    with multiprocessing.Pool(2, initializer=_init, initargs=(p, lock)) as pl:
+        a, b = evolve(p, 4, lock, seed=3), evolve(p, 4, lock, seed=3, pool=pl)
+        sa, sb2 = [next(a)[0][0] for _ in range(20)], [next(b)[0][0] for _ in range(20)]
+    assert sa == sb2, (sa, sb2)
     print("ok baseline", round(sb, 3), "ga", round(sg, 3), "training", round(best[0], 3), "->", round(best[-1], 3))

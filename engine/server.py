@@ -153,11 +153,12 @@ def boundary():
 def design(req: DesignRequest):
     t0, e0 = time.time(), sim.EVALS
     p, net, k, lk = _problem(req)
+    pl = routes.pool(p, lk) if req.optimizer in ("ga", "rl+ga") else None  # T-B3; None under 3 GB free
     try:
         if req.optimizer == "baseline":
             rs = routes.baseline(p, k, lk)
         elif req.optimizer == "ga":
-            rs = routes.ga(p, k, lk, seconds=req.seconds)
+            rs = routes.ga(p, k, lk, seconds=req.seconds, pool=pl)
         else:
             import rl
 
@@ -172,9 +173,12 @@ def design(req: DesignRequest):
                 if seeds:  # T-B2: destroy-and-repair from the best sample for half the rest, then the GA
                     seeds.insert(0, search.lns(p, k, seeds[0], left / 2, lk))
                     left /= 2
-                rs = routes.ga(p, k, lk, left, seeds=seeds)
+                rs = routes.ga(p, k, lk, left, seeds=seeds, pool=pl)
     except (ValueError, FileNotFoundError) as err:
         raise HTTPException(422, str(err))
+    finally:
+        if pl:
+            pl.terminate()
     out = _output(p, net, rs, req)
     RESULTS.mkdir(exist_ok=True)
     rid = f"run-{datetime.now():%Y%m%d-%H%M%S-%f}"
