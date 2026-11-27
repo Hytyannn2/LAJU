@@ -20,6 +20,7 @@ import gzip
 import io
 import json
 import heapq
+import os
 import re
 import shutil
 import urllib.request
@@ -117,6 +118,10 @@ JOBS_PER_TRIP = 0.1  # jobs at a place per trip a day it pulls (a mall drawing 1
 M2_PER_JOB = {"commercial": 40, "retail": 40, "industrial": 100}  # building footprint per job on OSM's land use
 GATEWAYS = {  # border crossings: (lat, lng of the town beyond, trips a day); they sit on the nearest Kelantan road
     "Rantau Panjang - Sungai Golok": (6.0216, 101.9765, 3000), "Terengganu border - Jerteh": (5.7381, 102.4972, 3000)}
+ECRL = {  # East Coast Rail Link stations: (lat, lng) of the sites OSM maps as under construction (so _kind skips them),
+    "ECRL Kota Bharu": (6.05143, 102.23253), "ECRL Pasir Puteh": (5.80648, 102.36769)}  # confirmed by the owner 2026-11-27
+ECRL_ON = os.environ.get("LAJU_ECRL") == "1"  # a what-if, off by default: passengers from January 2027 is only a target
+ECRL_TRIPS = float(os.environ.get("LAJU_ECRL_TRIPS", PLACES["rail"]))  # trips a day per station: a guess, try 200-3000
 ZONES = 2000         # demand zones: weighted k-means over where people live
 ACCESS_KMH = 20      # from a zone to the roads the network knows, and within a zone: small roads, motorbike or foot
 # Riders choose (brain v2 Phase 2, sim.py score v3): every trip compares the bus with a motorbike or car, or for people
@@ -354,6 +359,11 @@ def places():
     for name, (lat, lng, _) in GATEWAYS.items():
         v = cKDTree(R["P"]).query(_m([lat], [lng]))[1][0]
         rows.append({"lat": float(R["lat"][v]), "lng": float(R["lng"][v]), "kind": "gateway", "name": name, "m2": 0})
+    if ECRL_ON:  # on the nearest road a bus may stop on: the stations' own access roads (580-630 m) are not in OSM yet.
+        ok = np.flatnonzero(R["stop_ok"])  # ponytail: assumes a bus reaches the door; drop the move once OSM maps them
+        for name, (lat, lng) in ECRL.items():
+            v = ok[cKDTree(R["P"][ok]).query(_m([lat], [lng]))[1][0]]
+            rows.append({"lat": float(R["lat"][v]), "lng": float(R["lng"][v]), "kind": "rail", "name": name, "m2": 0})
     d = districts()
     pts = gpd.GeoDataFrame(geometry=gpd.points_from_xy([x["lng"] for x in rows], [x["lat"] for x in rows]), crs=d.crs)
     j = gpd.sjoin(pts, d, predicate="within", how="left")
@@ -369,6 +379,8 @@ def places():
             x["trips"] = TRIPS_PER_M2[x["kind"]] * x["m2"]
         elif x["kind"] == "gateway":
             x["trips"] = float(GATEWAYS[x["name"]][2])
+        elif ECRL_ON and x["name"] in ECRL:
+            x["trips"] = ECRL_TRIPS
     return rows
 
 
@@ -695,6 +707,8 @@ def build(bbox, n_stops=60, forced=(), locked=(), headways=HEADWAYS, max_buses=0
                 walked = _walk_min(np.linalg.norm(wP[mine][:, None] - R["P"][cand[opts]][None], axis=2))
                 j[c] = opts[int(np.argmin(wpop[mine] @ walked))]
     pick = np.r_[cand[j[: len(planner)]], cand[j[len(planner):]] if spots is None else np.asarray(spots, int)]
+    if ECRL_ON:  # a key stop at each station in view: homes and places alone put the nearest one 1.7 and 2.4 km off
+        pick = np.r_[pick, cand[tree.query(plP[np.array([x["name"] in ECRL for x in pl], bool)])[1]]]
     first = np.sort(np.unique(pick, return_index=True)[1])
     nodes = pick[first]
     K, N = len(nodes), len(R["lat"])
@@ -1029,6 +1043,8 @@ if __name__ == "__main__":
     assert size["AEON Mall Kota Bharu"] > 5 * size["Bazar Tuan Padang"], "malls differ by their footprint"
     kinds = Counter(x["kind"] for x in places())
     assert kinds["rail"] >= 20 and kinds["airport"] >= 1 and kinds["gateway"] == len(GATEWAYS), kinds
+    ecrl = [x["trips"] for x in places() if x["name"] in ECRL]
+    assert ecrl == ([ECRL_TRIPS] * len(ECRL) if ECRL_ON else []), "the ECRL stations only when switched on"
     assert all(abs(sum(o) - 1) < 1e-9 and abs(sum(b) - 1) < 1e-9 and len(o) == len(b) == len(PERIODS)
                for _, _, o, b in PURPOSES.values()), "period shares"
     dP, dpop, T = zones()

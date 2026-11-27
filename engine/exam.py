@@ -54,6 +54,8 @@ TESTS = (  # destination kinds, minutes door to door, "nearest" = the one closes
     ("park, stadium or beach", ("park", "stadium", "beach"), 60, "any", 2),
     ("town", ("town",), 45, "nearest", 1),
 )
+if kelantan.ECRL_ON:  # each ECRL station its own test too, beside any "rail station"
+    TESTS += tuple((name, (name,), 45, "any", 1) for name in kelantan.ECRL)
 TRIP_PERIOD = 1  # the planner's test trips: in the day
 TRIPS = (  # the planner's test trips (2026-10-10 / 18): (from, lat, lng), (to, lat, lng), placed by their OSM names
     (("SK Kota", 6.085193, 102.233006), ("KB Mall", 6.117549, 102.241033)),
@@ -79,7 +81,9 @@ def targets():
         TARGETS.write_text(json.dumps({"town": [[g.y, g.x] for g in towns if poly.contains(g)]}))
     out = {"town": list(kelantan._m(*np.array(json.loads(TARGETS.read_text())["town"]).reshape(-1, 2).T))}
     for x in kelantan.places():
-        out.setdefault(x["kind"], []).append(kelantan._m([x["lat"]], [x["lng"]])[0])
+        xy = kelantan._m([x["lat"]], [x["lng"]])[0]
+        for kind in (x["kind"], x["name"]) if x["name"] in kelantan.ECRL else (x["kind"],):
+            out.setdefault(kind, []).append(xy)
     return {k: np.array(v).reshape(-1, 2) for k, v in out.items()}
 
 
