@@ -453,8 +453,11 @@ def _write(f, d):
 
 def cities_file(regime="product"):
     """The Kelantan training maps of today's score version (plan.md T-A6): built when missing, never mixed with maps
-    pickled under older rules (each set is ~840 MB; older ones stay until the planner deletes them)."""
-    return HERE / "cache" / f"rl_cities-{sim.SCORE_VERSION}-{regime}.pkl"
+    pickled under older rules (each set is ~840 MB; older ones stay until the planner deletes them). Maps with the ECRL
+    stations (kelantan.ECRL_ON) are a set of their own."""
+    import kelantan
+
+    return HERE / "cache" / f"rl_cities-{sim.SCORE_VERSION}-{regime}{'-ecrl' if kelantan.ECRL_ON else ''}.pkl"
 
 
 def _checkpoint(net, s):
@@ -518,11 +521,8 @@ def train(minutes=60.0, workers=4, lr=2e-4, k=16, seed=0, out=MODEL, start=None,
     import torch.multiprocessing as mp
 
     import experiments
-    import kelantan
     import server
 
-    if kelantan.ECRL_ON:  # the training maps' file name does not say which map they hold
-        raise SystemExit("LAJU_ECRL=1 is set: train on today's map (unset it)")
     t0, maps = time.time(), cities_file()
     config = {"minutes": minutes, "workers": workers, "lr": lr, "k": k, "seed": seed, "out": out, "start": start,
               "maps": maps, "regime": "product", "synthetic": SYNTHETIC, "entropy": ENTROPY, "cached": CACHED,
@@ -670,6 +670,9 @@ if __name__ == "__main__":
     msg = changes(a, a | {"d0": 0.25, "att": 60.3, "local": 4})  # 0.3 min is under 1%: not mentioned
     assert msg == "direct trips 20.0% -> 25.0%; routes: local 3 -> 4", msg
     now, sim.SCORE_VERSION = sim.SCORE_VERSION, "v-test"  # new score rules: new training maps, the old file untouched
-    assert cities_file().name == "rl_cities-v-test-product.pkl" and not cities_file().exists()
+    import kelantan
+
+    want = f"rl_cities-v-test-product{'-ecrl' if kelantan.ECRL_ON else ''}.pkl"
+    assert cities_file().name == want and not cities_file().exists()
     sim.SCORE_VERSION = now
     print("ok", "untrained scores", np.round(np.sort(score), 2).tolist())
