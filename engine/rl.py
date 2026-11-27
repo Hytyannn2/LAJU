@@ -518,8 +518,9 @@ def train(minutes=60.0, workers=4, lr=2e-4, k=16, seed=0, out=MODEL, start=None,
     every LIVE_S seconds the policy's design of the Kelantan network to server.RL_LIVE (the website's AI training map).
     Every CHECKPOINT_MIN awake minutes the network also goes to CHECKPOINTS; awake: Windows does not sleep on idle
     meanwhile. The run ends with an experiment record (results/exp-*.json)."""
-    import torch.multiprocessing as mp
+    from torch import multiprocessing
 
+    mp = multiprocessing.get_context("spawn")  # Windows' way; Linux's default, fork, hangs the workers: 0 updates
     import experiments
     import server
 
