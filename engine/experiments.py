@@ -8,6 +8,8 @@ search effort, result. The commands below leave records too.
                                                      spread comes from, how much its training signal agrees with itself
     python experiments.py bench --methods rl+ga,sample --seeds 10 --seconds 300 [--generations 84] [--maps state,val]
                                                   -> each method from each seed on the maps, a table with intervals
+    python experiments.py sweep [--routes 12,16,20,24,32] [--buses 64,100,200] [--seconds 300]
+                                                  -> today's design per route count x fleet, one exam row each
     python experiments.py compare A.json B.json   -> is B better than A: paired Wilcoxon and a 95% bootstrap interval
     python experiments.py fair "Phase 5: 64 buses" ...  -> BAS.MY's timetable beside saved designs: riders, vehicle-hours,
                                                      bus-km, riders per bus-km (plan.md 6.5; E1 / E2 resources)
@@ -296,6 +298,42 @@ def bench(methods, seeds=10, seconds=300.0, generations=0, maps=("state",)):
     return runs
 
 
+def sweep(routes=(12, 16, 20, 24, 32), buses=(64, 100, 200), seconds=300):
+    """Today's design (server.design, rl+ga) of the state map at each route count x fleet, each judged by the exam
+    (exam.exam): a row printed as it lands, and all of them recorded. -> rows"""
+    import exam
+    import rl
+    import server
+
+    t0, e0, rows = time.time(), sim.EVALS, []
+    print(f"{'routes':>6} {'fleet':>5} {'used':>5} {'riders':>8} {'cover':>6} {'rural':>6} {'access':>6}  "
+          f"{'worst 3 districts, access':<44} {'SK Kota -> KB Mall':>18} {'RM a day':>9} {'RM/rider':>8} {'shortest':>8}",
+          flush=True)
+    for R in routes:
+        for B in buses:
+            name = f"Routes {R}: {B} buses"
+            server.design(rl.target().model_copy(update={"name": name, "optimizer": "rl+ga", "seconds": seconds,
+                                                         "n_routes": R, "max_buses": B}))
+            e = exam.exam(*exam.load(name))
+            means = {d: float(np.mean(list(v.values()))) for d, v in e["districts"].items()}
+            worst = sorted(means.items(), key=lambda kv: kv[1])[:3]
+            worst_txt = ", ".join(f"{d} {v:.0%}" for d, v in worst)
+            mins, changes = e["trips"]["SK Kota -> KB Mall"]
+            trip = "no bus" if not math.isfinite(mins) else f"{mins:.0f} min, {changes} chg"
+            row = {"name": name, "routes": R, "max_buses": B, "routes_run": e["routes"], "buses": e["buses"],
+                   "riders": e["riders"], "covered_all": e["coverage"]["all"], "covered_rural": e["coverage"]["rural"],
+                   "access": float(np.mean(list(e["access"].values()))), "worst": worst, "cost_day": e["cost_day"],
+                   "rm_per_rider": e["cost_day"] / max(e["riders"], 1),
+                   "shortest_route": min(e["route_minutes"], default=math.nan), "districts": means, "trips": e["trips"]}
+            rows.append(row)
+            print(f"{R:>6} {B:>5} {row['buses']:>5} {row['riders']:>8,.0f} {row['covered_all']:>6.0%} "
+                  f"{row['covered_rural']:>6.0%} {row['access']:>6.0%}  {worst_txt:<44} {trip:>18} "
+                  f"{row['cost_day']:>9,.0f} {row['rm_per_rider']:>8.1f} {row['shortest_route']:>4.0f} min", flush=True)
+    record("sweep", {"routes": list(routes), "buses": list(buses), "seconds": seconds}, rows, start=t0,
+           evals=sim.EVALS - e0)
+    return rows
+
+
 def compare(a, b, metric="score"):
     """Is B better than A? Each a bench record, "file.json" or "file.json:method". Runs pair by map and seed. -> (IQM of
     the change B / A - 1 over the pairs, its 95% stratified bootstrap interval, Wilcoxon signed-rank p, pairs where B
@@ -373,6 +411,17 @@ if __name__ == "__main__" and sys.argv[1:2] == ["bench"]:
     a.add_argument("--maps", default="state")
     x = a.parse_args()
     bench(x.methods.split(","), x.seeds, x.seconds, x.generations, x.maps.split(","))
+    sys.exit()
+if __name__ == "__main__" and sys.argv[1:2] == ["sweep"]:
+    import argparse
+
+    a = argparse.ArgumentParser()
+    a.add_argument("sweep")
+    a.add_argument("--routes", default="12,16,20,24,32")
+    a.add_argument("--buses", default="64,100,200")
+    a.add_argument("--seconds", type=float, default=300.0)
+    x = a.parse_args()
+    sweep(tuple(map(int, x.routes.split(","))), tuple(map(int, x.buses.split(","))), x.seconds)
     sys.exit()
 if __name__ == "__main__" and sys.argv[1:2] == ["compare"]:
     compare(*sys.argv[2:4], *sys.argv[4:5])

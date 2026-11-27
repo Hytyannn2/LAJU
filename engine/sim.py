@@ -83,6 +83,10 @@ CATEGORIES = (  # name, minimum service (a bus at least every ... min), passenge
     ("intertown", 60, 45, 3.5),  # coach, seated: town to town along a corridor
 )  # minimum service 10 / 15 / 30 min until 2026-10-18: quiet routes then needed as many buses as busy ones
 HEADWAYS = tuple(c[1] for c in CATEGORIES)
+C_KM = 3.4  # RM per bus-km (with empty runs from depots): the contract rate implied for BAS.MY (plan.md §16.4); F-a, T-F1
+C_BUS = 0.0  # RM per bus owned, a day (depreciation, driver): 0 until an operator's figure is known (plan.md §16.4)
+RIDER_VALUE = 25.0  # RM a day one rider is worth (F-b, owner default 2026-11-23): what BAS.MY pays per rider in the model,
+                    # about RM 57,000 a day / 2,318 riders. Only the exam's net value uses it until T-F1 step 3
 
 
 def category(km, stops):
@@ -578,6 +582,7 @@ def _v3(p, routes, cats, floor_h, route_km, fixed=None, detail=False):
         U = np.triu(pairs + pairs.transpose(0, 2, 1))
         m["pairs"] = [[[int(a), int(b), round(float(U[i, a, b]))] for a, b in zip(*np.unravel_index(
             np.argsort(U[i], None)[::-1][:3], (n, n))) if U[i, a, b] > 0] for i in range(nr)]
+    m["cost_day"] = C_KM * (m["bus_km_day"] + m["empty_km_day"]) + C_BUS * m["fleet"]  # RM a day; not in the score yet
     m["over"] = int(over)  # buses the minimum services need beyond the budget
     m["over_vh"], m["over_km"] = over_vh, over_km  # vehicle-hours and bus-km a day they need beyond budget_vh, budget_km
     pen = m["penalties"] = {"fleet": 1 + OVER_BUDGET * over / p.budget} if over else {}

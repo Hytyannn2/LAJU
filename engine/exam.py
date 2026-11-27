@@ -39,7 +39,7 @@ from scipy.spatial import cKDTree
 
 import kelantan
 import routes
-from sim import DWELL_MIN, LAYOVER_MIN, SCORE_VERSION, TIMED_MIN, UTURN_MIN, electric, evaluate, quickest
+from sim import C_BUS, C_KM, DWELL_MIN, LAYOVER_MIN, RIDER_VALUE, SCORE_VERSION, TIMED_MIN, UTURN_MIN, electric, evaluate, quickest
 
 HERE = Path(__file__).resolve().parent
 TARGETS = HERE / "cache" / "exam_places.json"  # the exam's destinations, rebuilt from OSM when deleted
@@ -243,6 +243,8 @@ def exam(p, net, rs, heads, express=None, timetable=None, hubs=()):
     out["buses"] = max(out["buses_k"])
     out["bus_km_day"] = float((2 * km[:, None] * np.where(np.isfinite(heads), 60 * hours / heads, 0)).sum())
     out["empty_km_day"] = float(sum(b * min(p.depot_km[r[0]], p.depot_km[r[-1]]) for r, b in zip(rs, buses.max(1))))
+    out["cost_day"] = C_KM * (out["bus_km_day"] + out["empty_km_day"]) + C_BUS * out["buses"]  # RM a day (sim.C_KM)
+    out["riders"] = m["riders"] if timetable is None else evaluate(p, rs, fixed=heads)["riders"]  # BAS.MY: its timetable
     out["electric"] = sum(electric(k, c, hours.sum()) for k, c in zip(km, cycle))
     out["route_minutes"] = [round(float(o)) for o in out_back[:, 0]]
     out |= {"routes": len(rs), "stops": S, "hubs": len(hubs)}
@@ -372,6 +374,9 @@ def report(names, results):
     row("routes / stops / buses", [f"{e['routes']} / {e['stops']} / {e['buses']}" for e in results])
     row("buses: peak / day / eve / night", [" / ".join(map(str, e["buses_k"])) for e in results])
     row("bus-km a day / empty from depots", [f"{e['bus_km_day']:,.0f} / {e['empty_km_day']:,.0f}" for e in results])
+    row("RM a day / RM per rider", [f"{e['cost_day']:,.0f} / {e['cost_day'] / max(e['riders'], 1):,.1f}" for e in results])
+    row(f"riders / net RM a day (RM {RIDER_VALUE:g})", [f"{e['riders']:,.0f} / {e['riders'] * RIDER_VALUE - e['cost_day']:,.0f}"
+                                                      for e in results])
     row("timed hubs / e-bus routes", [f"{e['hubs']} / {e['electric']} of {e['routes']}" for e in results])
     row("covered: town / rural / all", [" / ".join(f"{e['coverage'][k]:.0%}" for k in ("town", "rural", "all")) for e in results])
     print("can get there (on foot alone):")
