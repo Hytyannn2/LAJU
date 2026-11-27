@@ -8,6 +8,9 @@ search effort, result. The commands below leave records too.
                                                      spread comes from, how much its training signal agrees with itself
     python experiments.py bench --methods rl+ga,sample --seeds 10 --seconds 300 [--generations 84] [--maps state,val]
                                                   -> each method from each seed on the maps, a table with intervals
+                                                     (methods: baseline, ga, rl+ga, sample, stage2, lns, ga64)
+    python experiments.py speed [generations]     -> the GA serial vs on the worker pool (plan.md T-B3): same best
+                                                     score every generation, and the speed-up
     python experiments.py sweep [--routes 12,16,20,24,32] [--buses 64,100,200] [--seconds 300]
                                                   -> today's design per route count x fleet, one exam row each
     python experiments.py compare A.json B.json   -> is B better than A: paired Wilcoxon and a 95% bootstrap interval
@@ -231,12 +234,12 @@ def _sample(p, k, lk, seed, seconds, generations=0, t0=None):
                 return curve[-1].pop(), [c[:3] for c in curve], b
 
 
-def _ga(p, k, lk, seed, seconds, generations=0, t0=None, seeds=()):
+def _ga(p, k, lk, seed, seconds, generations=0, t0=None, seeds=(), pool=None):
     """routes.evolve from `seeds` for `seconds` (or `generations`). -> (routes, curve, generations)"""
     import routes
 
     t0, curve = t0 or time.time(), []
-    for g, scored in enumerate(routes.evolve(p, k, lk, seed=seed, seeds=seeds)):
+    for g, scored in enumerate(routes.evolve(p, k, lk, seed=seed, seeds=seeds, pool=pool)):
         if not curve or scored[0][0] < curve[-1][2]:
             curve.append([round(time.time() - t0, 1), g, scored[0][0]])
         if (g >= generations) if generations else (time.time() - t0 >= seconds):
@@ -252,11 +255,49 @@ def _rlga(p, k, lk, seed, seconds, generations=0):
     return _ga(p, k, lk, seed, seconds, generations, t0, seeds=rl.samples(p, k, 8, lk, seed))
 
 
+def _stage2(p, k, lk, seed, seconds, generations=0):
+    """search.design (sample, lns, GA) with the worker pool, closed after. The stages count their own time."""
+    import routes
+    import search
+
+    pl = routes.pool(p, lk)
+    try:
+        return search.design(p, k, lk, seconds, seed, pool=pl), [], 0
+    finally:
+        if pl:
+            pl.terminate()
+
+
+def _lns(p, k, lk, seed, seconds, generations=0):
+    """The best of 64 policy samples, then search.lns from it for `seconds` (the sampling is not counted)."""
+    import search
+
+    start = search.sample(p, k, n=64, locked=lk, seed=seed)[0][1]
+    return [list(r) for r in lk] + search.lns(p, k, start, seconds, lk, seed=seed), [], 0
+
+
+def _ga64(p, k, lk, seed, seconds, generations=0):
+    """_ga from the best of 64 policy samples, on the worker pool (closed after); time from after sampling, like _lns."""
+    import routes
+    import search
+
+    start = search.sample(p, k, n=64, locked=lk, seed=seed)[0][1]
+    pl = routes.pool(p, lk)
+    try:
+        return _ga(p, k, lk, seed, seconds, generations, seeds=[start], pool=pl)
+    finally:
+        if pl:
+            pl.terminate()
+
+
 METHODS = {  # name: f(p, n_routes, locked, seed, seconds, generations) -> (routes, curve, generations)
     "baseline": lambda p, k, lk, seed, seconds, generations=0: (__import__("routes").baseline(p, k, lk), [], 0),
     "ga": _ga,          # the GA from scratch
     "rl+ga": _rlga,     # today's product
     "sample": _sample,  # the policy alone, best of everything drawn in the time
+    "stage2": _stage2,  # search.design: sample, lns, GA on the pool (T-B1 to T-B3)
+    "lns": _lns,        # the best of 64 samples, then destroy-and-repair (T-B2)
+    "ga64": _ga64,      # the GA from the best of 64 samples, on the pool
 }
 
 
@@ -277,8 +318,10 @@ def bench(methods, seeds=10, seconds=300.0, generations=0, maps=("state",)):
                 s0, c0 = time.time(), sim.EVALS
                 rs, curve, gens = METHODS[method](p, k, lk, seed, seconds, generations)
                 m = sim.evaluate(p, rs)
+                # evals of pool methods undercount: the workers count their own sim.EVALS, this process does not see them
                 runs.append({"method": method, "map": where, "seed": seed, "score": m["score"], "riders": m["riders"],
-                             "covered": m["covered"], "fleet": m["fleet"], "over": m["over"], "evals": sim.EVALS - c0,
+                             "covered": m["covered"], "fleet": m["fleet"], "over": m["over"], "violation": m["violation"],
+                             "evals": sim.EVALS - c0,
                              "seconds": round(time.time() - s0, 1), "generations": gens, "curve": curve, "routes": rs})
                 print(f"{where} {method} seed {seed}: score {m['score']:.4f}, {m['riders']:,.0f} riders, "
                       f"{gens} generations, {runs[-1]['seconds']:.0f} s, {runs[-1]['evals']} evaluations", flush=True)
@@ -332,6 +375,40 @@ def sweep(routes=(12, 16, 20, 24, 32), buses=(64, 100, 200), seconds=300):
     record("sweep", {"routes": list(routes), "buses": list(buses), "seconds": seconds}, rows, start=t0,
            evals=sim.EVALS - e0)
     return rows
+
+
+def speed(generations=20, seed=0):
+    """routes.evolve on the state map, serial and on routes.pool: the best score of every generation must match exactly
+    (T-B3), and the pooled run's speed-up. Both are timed after their first population, so the pool's workers are warm
+    and their start-up is not counted. -> the two score lists and the times, recorded"""
+    import routes
+
+    p, k, lk = _state()
+    pl = routes.pool(p, lk)
+    if pl is None:
+        raise SystemExit("speed needs the worker pool: under 3 GB free memory")
+    t0e, e0 = time.time(), sim.EVALS
+
+    def run(pool):
+        gen = routes.evolve(p, k, lk, seed=seed, pool=pool)
+        best = [next(gen)[0][0]]  # the first population: warms the workers, not timed
+        t0 = time.time()
+        for _ in range(generations):
+            best.append(next(gen)[0][0])
+        return best, round(time.time() - t0, 2)
+
+    try:
+        ser, ts = run(None)
+        par, tp = run(pl)
+    finally:
+        pl.terminate()
+    same = ser == par
+    print(f"identical best score every generation: {'yes' if same else 'no'} ({len(ser)} generations)")
+    print(f"serial {ts:.1f} s, pool {tp:.1f} s, speed-up {ts / tp:.2f}x", flush=True)
+    record("speed", {"generations": generations, "seed": seed, "pool_workers": 4}, {
+        "identical": same, "serial_s": ts, "pool_s": tp, "speedup": ts / tp, "serial": ser, "pool": par},
+        seeds=[seed], evals=sim.EVALS - e0, start=t0e)  # evals: the pool's workers are not counted
+    return same, ts / tp
 
 
 def compare(a, b, metric="score"):
@@ -422,6 +499,9 @@ if __name__ == "__main__" and sys.argv[1:2] == ["sweep"]:
     a.add_argument("--seconds", type=float, default=300.0)
     x = a.parse_args()
     sweep(tuple(map(int, x.routes.split(","))), tuple(map(int, x.buses.split(","))), x.seconds)
+    sys.exit()
+if __name__ == "__main__" and sys.argv[1:2] == ["speed"]:
+    speed(*(int(x) for x in sys.argv[2:3]))
     sys.exit()
 if __name__ == "__main__" and sys.argv[1:2] == ["compare"]:
     compare(*sys.argv[2:4], *sys.argv[4:5])

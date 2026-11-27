@@ -3,6 +3,7 @@ import time
 
 import torch
 
+import routes
 import sim
 
 
@@ -65,9 +66,19 @@ def lns(p, n_routes, start, seconds, locked=(), seed=0, k=16, net=None, log=None
     return free
 
 
+def design(p, n_routes, locked=(), seconds=300.0, seed=0, pool=None):
+    """Today's design (server.design, rl+ga): sample wide, then the GA from the best of it. -> locked + free routes."""
+    s = min(60.0, seconds / 4)  # T-B1: sample wide for a quarter of the time (60 s at most), the GA starts from the best 8
+    seeds = [x for _, x in sample(p, n_routes, n=10**9, seconds=s, locked=locked, seed=seed)[:8]]
+    left = max(1.0, seconds - s)
+    if seeds:  # T-B2: destroy-and-repair from the best sample for half the rest, then the GA
+        seeds.insert(0, lns(p, n_routes, seeds[0], left / 2, locked, seed=seed))
+        left /= 2
+    return routes.ga(p, n_routes, locked, left, seed=seed, seeds=seeds, pool=pool)
+
+
 if __name__ == "__main__":  # self-check on Mandl: valid sets, sorted by key, best no worse than the greedy first draw
     import bench
-    import routes
 
     p = bench.problem()
     res = sample(p, 6, n=32)
@@ -79,4 +90,8 @@ if __name__ == "__main__":  # self-check on Mandl: valid sets, sorted by key, be
     assert res[0][0] <= greedy
     out = lns(p, 6, res[0][1], 5)
     assert routes.valid(p, out) and len(out) == 6 and sim.key(sim.evaluate(p, out)) <= res[0][0], "lns got worse"
+    d = design(p, 6, seconds=6, seed=1)
+    assert len(d) == 6 and routes.valid(p, d), d
+    d2 = design(p, 6, d[:1], seconds=6, seed=1)  # a locked route stays first
+    assert len(d2) == 6 and d2[0] == d[0] and routes.valid(p, d2), d2
     print("search ok:", len(res), "distinct sets, best key", res[0][0], "-> lns", sim.key(sim.evaluate(p, out)))
