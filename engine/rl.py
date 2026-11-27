@@ -518,8 +518,11 @@ def train(minutes=60.0, workers=4, lr=2e-4, k=16, seed=0, out=MODEL, start=None,
     import torch.multiprocessing as mp
 
     import experiments
+    import kelantan
     import server
 
+    if kelantan.ECRL_ON:  # the training maps' file name does not say which map they hold
+        raise SystemExit("LAJU_ECRL=1 is set: train on today's map (unset it)")
     t0, maps = time.time(), cities_file()
     config = {"minutes": minutes, "workers": workers, "lr": lr, "k": k, "seed": seed, "out": out, "start": start,
               "maps": maps, "regime": "product", "synthetic": SYNTHETIC, "entropy": ENTROPY, "cached": CACHED,
