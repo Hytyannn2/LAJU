@@ -54,7 +54,7 @@ TESTS = (  # destination kinds, minutes door to door, "nearest" = the one closes
     ("park, stadium or beach", ("park", "stadium", "beach"), 60, "any", 2),
     ("town", ("town",), 45, "nearest", 1),
 )
-if kelantan.ECRL_ON:  # each ECRL station its own test too, beside any "rail station"
+if kelantan.ECRL_ON:  # each ECRL station its own test too, beside any "rail station" (which includes them)
     TESTS += tuple((name, (name,), 45, "any", 1) for name in kelantan.ECRL)
 TRIP_PERIOD = 1  # the planner's test trips: in the day
 TRIPS = (  # the planner's test trips (2026-10-10 / 18): (from, lat, lng), (to, lat, lng), placed by their OSM names
