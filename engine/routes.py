@@ -169,8 +169,8 @@ def evolve(p, n_routes, locked=(), pop=40, seed=0, seeds=(), pool=None):
             rs[k] = settle(p, r)
         return rs
 
-    def fit(xs):
-        return list(zip(pool.map(_fit, xs) if pool else [evaluate(p, locked + rs)["score"] for rs in xs], xs))
+    def fit(xs):  # chunksize 1: the default (3 for 38 children on 4 workers) left one worker alone at the end (T-B3)
+        return list(zip(pool.map(_fit, xs, chunksize=1) if pool else [evaluate(p, locked + rs)["score"] for rs in xs], xs))
 
     start = [fill(baseline(p, n_routes, locked)[len(locked):])] + [fill(s) for s in seeds]
     start += [fill([]) for _ in range(pop - len(start))]

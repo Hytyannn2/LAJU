@@ -8,7 +8,7 @@ search effort, result. The commands below leave records too.
                                                      spread comes from, how much its training signal agrees with itself
     python experiments.py bench --methods rl+ga,sample --seeds 10 --seconds 300 [--generations 84] [--maps state,val]
                                                   -> each method from each seed on the maps, a table with intervals
-                                                     (methods: baseline, ga, rl+ga, sample, stage2, lns, ga64)
+                                                     (methods: baseline, ga, rl+ga, sample, stage2, lns, ga64, ga64-serial)
     python experiments.py speed [generations]     -> the GA serial vs on the worker pool (plan.md T-B3): same best
                                                      score every generation, and the speed-up
     python experiments.py sweep [--routes 12,16,20,24,32] [--buses 64,100,200] [--seconds 300]
@@ -247,12 +247,17 @@ def _ga(p, k, lk, seed, seconds, generations=0, t0=None, seeds=(), pool=None):
 
 
 def _rlga(p, k, lk, seed, seconds, generations=0):
-    """Today's product (server.design, rl+ga): 8 policy samples, the first greedy, seed the GA. Their drawing counts in
-    the time."""
+    """The path before T-B1: 8 policy samples, the first greedy, seed the GA, on the worker pool like stage2 so the two
+    differ in the search only. The pool's start and the samples' drawing count in the time."""
     import rl
+    import routes
 
-    t0 = time.time()
-    return _ga(p, k, lk, seed, seconds, generations, t0, seeds=rl.samples(p, k, 8, lk, seed))
+    t0, pl = time.time(), routes.pool(p, lk)
+    try:
+        return _ga(p, k, lk, seed, seconds, generations, t0, seeds=rl.samples(p, k, 8, lk, seed), pool=pl)
+    finally:
+        if pl:
+            pl.terminate()
 
 
 def _stage2(p, k, lk, seed, seconds, generations=0):
@@ -276,13 +281,14 @@ def _lns(p, k, lk, seed, seconds, generations=0):
     return [list(r) for r in lk] + search.lns(p, k, start, seconds, lk, seed=seed), [], 0
 
 
-def _ga64(p, k, lk, seed, seconds, generations=0):
-    """_ga from the best of 64 policy samples, on the worker pool (closed after); time from after sampling, like _lns."""
+def _ga64(p, k, lk, seed, seconds, generations=0, pooled=True):
+    """_ga from the best of 64 policy samples, on the worker pool (closed after), or on one core with pooled=False;
+    time from after sampling, like _lns."""
     import routes
     import search
 
     start = search.sample(p, k, n=64, locked=lk, seed=seed)[0][1]
-    pl = routes.pool(p, lk)
+    pl = routes.pool(p, lk) if pooled else None
     try:
         return _ga(p, k, lk, seed, seconds, generations, seeds=[start], pool=pl)
     finally:
@@ -293,11 +299,13 @@ def _ga64(p, k, lk, seed, seconds, generations=0):
 METHODS = {  # name: f(p, n_routes, locked, seed, seconds, generations) -> (routes, curve, generations)
     "baseline": lambda p, k, lk, seed, seconds, generations=0: (__import__("routes").baseline(p, k, lk), [], 0),
     "ga": _ga,          # the GA from scratch
-    "rl+ga": _rlga,     # today's product
+    "rl+ga": _rlga,     # the path before T-B1
     "sample": _sample,  # the policy alone, best of everything drawn in the time
     "stage2": _stage2,  # search.design: sample, lns, GA on the pool (T-B1 to T-B3)
     "lns": _lns,        # the best of 64 samples, then destroy-and-repair (T-B2)
     "ga64": _ga64,      # the GA from the best of 64 samples, on the pool
+    # the same on one core: equal compute with lns (T-B2)
+    "ga64-serial": lambda p, k, lk, seed, seconds, generations=0: _ga64(p, k, lk, seed, seconds, generations, pooled=False),
 }
 
 
@@ -412,9 +420,9 @@ def speed(generations=20, seed=0):
 
 
 def compare(a, b, metric="score"):
-    """Is B better than A? Each a bench record, "file.json" or "file.json:method". Runs pair by map and seed. -> (IQM of
-    the change B / A - 1 over the pairs, its 95% stratified bootstrap interval, Wilcoxon signed-rank p, pairs where B
-    is lower, pairs)"""
+    """Is B better than A? Each a bench record, "file.json" or "file.json:method". Runs pair by map and seed. d is the
+    ratio B / A - 1, or the difference B - A when some A is zero. -> (IQM of d over the pairs, its 95% stratified
+    bootstrap interval, Wilcoxon signed-rank p, pairs where B is lower, pairs)"""
     from scipy.stats import wilcoxon
 
     def runs(x):
@@ -424,14 +432,17 @@ def compare(a, b, metric="score"):
 
     A, B = runs(a), runs(b)
     both = sorted(set(A) & set(B))
-    d = np.array([B[x] / A[x] - 1 for x in both])
+    rel = all(A[x] for x in both)  # ratios unless some A is zero (a violation of 0 is feasible)
+    val = (lambda x: B[x] / A[x] - 1) if rel else (lambda x: B[x] - A[x])
+    d = np.array([val(x) for x in both])
     try:
         p = float(wilcoxon(d).pvalue)
     except ValueError:  # every pair the same
         p = 1.0
-    ci = interval([[B[x] / A[x] - 1 for x in both if x[0] == w] for w in sorted({x[0] for x in both})])
-    print(f"B vs A, {metric}: IQM change {iqm(d):+.2%} [{ci[0]:+.2%}, {ci[1]:+.2%}], Wilcoxon p = {p:.3g}, "
-          f"B lower in {int((d < 0).sum())} of {len(d)} pairs", flush=True)
+    ci = interval([[val(x) for x in both if x[0] == w] for w in sorted({x[0] for x in both})])
+    word, fmt = ("change", "+.2%") if rel else ("difference", "+.4g")
+    print(f"B vs A, {metric}: IQM {word} {iqm(d):{fmt}} [{ci[0]:{fmt}}, {ci[1]:{fmt}}], Wilcoxon p = {p:.3g}, "
+          f"B lower in {int((d < 0).sum())}, higher in {int((d > 0).sum())} of {len(d)} pairs", flush=True)
     return iqm(d), ci, p, int((d < 0).sum()), len(d)
 
 
@@ -522,6 +533,11 @@ if __name__ == "__main__":
         f = record("self-check", {"routes": [[0, 1, 2]], "out": Path(tmp)}, {"score": 1.5}, seeds=[0],
                    evals=sim.EVALS - before, start=time.time() - 2, folder=Path(tmp))
         d = json.loads(f.read_text())
+        for name, scores, viols in (("a", [0.2] * 3, [0.0] * 3), ("b", [0.1, 0.2, 0.3], [0.0, 1.0, 0.0])):
+            Path(tmp, f"{name}.json").write_text(json.dumps({"result": {"runs": [
+                {"method": "x", "map": "state", "seed": s, "score": scores[s], "violation": viols[s]} for s in range(3)]}}))
+        A, B = f"{tmp}/a.json", f"{tmp}/b.json"
+        assert compare(A, B, "violation")[3:] == (0, 3) and compare(A, B, "score")[3:] == (1, 3)
     assert tuple(d) == FIELDS and d["evals"] == 3 and d["seconds"] >= 2 and d["score_version"] == sim.SCORE_VERSION, d
     assert d["git"] and d["dirty"] is not None and d["cores"] and d["cpu"] and d["torch"] and d["config"]["out"] == tmp, d
     assert iqm([1, 2, 3, 100]) == 2.5 and iqm([5]) == 5.0  # one wild seed does not move it
